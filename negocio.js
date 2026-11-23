@@ -4,7 +4,7 @@
    Para armar la app de otra tienda, se cambia este archivo (y nada más del código).
    Lo que se guarde en ⚙️ Config (tabla config de la base) gana sobre estos valores:
      · config.negocio = { nombre, marca, tel, rut, ciudad }
-     · config.tarifaEnvio · config.mpRecargo · config.cuentasPago (Mabel también los lee)
+     · config.tarifaEnvio · config.mpRecargo · config.cuentasPago (el agente también los lee)
      · config.extraCobroCadete (solo la app)
    Lo usan Pedidos (index.html), Gestión (gestion.html) y los .js de la app.
    ══════════════════════════════════════════════════════════════ */
@@ -14,13 +14,13 @@ const NEGOCIO_DEF = {
   tel: '',                            // etiqueta de agencia · se carga en ⚙️ Config
   rut: '',                            // etiqueta de agencia · se carga en ⚙️ Config
   ciudad: 'Montevideo, Uruguay',      // pie del PDF de compras (Gestión)
-  tarifaEnvio: 250,                   // envío por cadetería ($) · Mabel también
-  mpRecargo: 10,                      // recargo de Mercado Pago (%) · Mabel también
+  tarifaEnvio: 250,                   // envío por cadetería ($) · el agente también
+  mpRecargo: 10,                      // recargo de Mercado Pago (%) · el agente también
   extraCobroCadete: 0,                // lo que suma el cadete cuando cobra en la puerta ($)
   costoMensaje: '$0,45',              // costo aproximado de cada plantilla de WhatsApp (solo el aviso)
   cuentasPago: ['Prex', 'Mercado Pago', 'Efectivo']   // solo nombres; nunca números de cuenta (repo público)
 };
-// Horarios de corte. NO se editan en Config porque Mabel tiene las mismas horas en su código (tools.ts):
+// Horarios de corte. NO se editan en Config porque el agente tiene las mismas horas en su código (tools.ts):
 // si se cambian, se cambian en los dos lados a la vez.
 const CORTES = {
   horaLiberar: 16,   // el pedido sin pagar se puede liberar desde esta hora del día siguiente a la fecha de pago

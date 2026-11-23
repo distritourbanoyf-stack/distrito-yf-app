@@ -87,7 +87,7 @@ function calcularPedido(pedido, ctx) {
   return res;
 }
 /**
- * Desglose para explicarle el total a el cliente: las prendas agrupadas por combo (con lo que queda el grupo) y las que van sueltas.
+ * Desglose para explicarle el total al cliente: las prendas agrupadas por combo (con lo que queda el grupo) y las que van sueltas.
  * res = calcularPedido(pedido, ctx). Devuelve { grupos:[{ id, txt, veces, items:[{ i, q }], antes, queda }], sueltas:[{ i, q, tot, lista }] }.
  */
 function desglosePedido(pedido, res) {

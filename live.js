@@ -227,12 +227,12 @@ renderLive = function () {
 const CONF_MSG_DEF = 'Hola {nombre}! De {tienda} 💛 Te anotamos en el live, ¿me confirmás con un SÍ?';
 function primerNombreConf(n) { const w = String(n || '').trim().split(/\s+/)[0] || ''; return w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : ''; }
 function textoConfirmacion(c) { return (cfg('msgConfirmacion') || CONF_MSG_DEF).replace(/\{nombre\}/g, primerNombreConf(c.nombre)).replace(/\{tienda\}/g, negocio('nombre')); }
-/** ¿Ya se le mandó la confirmación en este live? (cualquier pedido de el cliente en el mismo live) */
+/** ¿Ya se le mandó la confirmación en este live? (cualquier pedido del cliente en el mismo live) */
 function confirmacionEnviada(p) { return todosPedidos().some(x => x.clienteId === p.clienteId && x.liveId === p.liveId && x.confirmWA); }
 function confBtnHTML(p) {
   if (!p.prendas || !p.prendas.length || p.cambio) return '';
   const conf = todosPedidos().find(x => x.clienteId === p.clienteId && x.liveId === p.liveId && x.confirmado);
-  if (conf) return `<span class="chip ok" title="El cliente confirmó por WhatsApp${conf.confirmadoPor === 'mabel' ? ' (lo marcó Mabel)' : ''}">💛 Confirmó</span>`;
+  if (conf) return `<span class="chip ok" title="El cliente confirmó por WhatsApp${conf.confirmadoPor === 'mabel' ? ' (lo marcó el agente)' : ''}">💛 Confirmó</span>`;
   return confirmacionEnviada(p) ? '<span class="chip ok" title="Ya se le mandó el mensaje de confirmación en este live">✓ Confirmación enviada</span>'
     : `<button class="b" data-act="waConfirm" data-id="${p.id}" title="Manda: ${esc(textoConfirmacion(cliById(p.clienteId) || { nombre: '' }))}">✅ Enviar confirmación</button>`;
 }

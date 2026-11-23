@@ -7,7 +7,7 @@
    Lo nuevo:
    - Pago: medio, esperado, recargo, nota (despacho.js) · Clienta: notaMabel, puedeGuardarSinPagar
    - Pedido: guardadoSinPagar { desde, hasta } y pagaAlRetirar · estadoPago(p) y recibeRecordatorio(p)
-   - Tabla cobros (cobro agrupado) y tabla conversaciones ("↩️ Devolver a Mabel")
+   - Tabla cobros (cobro agrupado) y tabla conversaciones ("↩️ Devolver al agente")
    - Config: novedadesHoy { texto, vence }, diaOtrasAgencias, mpRecargo, guardarSinPagarDias
    Se carga después de pedidos4.js.
    ══════════════════════════════════════════════════════════════ */
@@ -33,7 +33,7 @@ const saveConvs = () => put('emma_conversaciones', DB.conversaciones);
 const cfgN = (k, def) => { const v = DB.config[k]; return v === undefined || v === null || v === '' ? def : v; };
 const DIAS_SEM = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
-// ─── Estado de pago (para Mabel, el recordatorio y la app) ────
+// ─── Estado de pago (para el agente, el recordatorio y la app) ────
 const pagoAlRetirar = p => !!p.pagaAlRetirar && entregaEf(p) === 'retiro';
 /** 'pagado' · 'guardado_sin_pagar' · 'al_retirar' · 'pendiente' */
 function estadoPago(p) {
@@ -77,7 +77,7 @@ function crearCobro(cid, ids, envio) {
   DB.cobros.push(k); saveCobros();
   return k;
 }
-/** Marca pagados todos los pedidos del cobro con un solo pago (lo usa la app y lo va a usar Mabel). */
+/** Marca pagados todos los pedidos del cobro con un solo pago (lo usa la app y lo va a usar el agente). */
 function pagarCobro(k, cuenta, transf, origen) {
   const { ps } = totalCobro(k), pend = ps.filter(p => !pagado(p));
   if (!pend.length) { k.estado = 'pagado'; saveCobros(); return []; }
@@ -100,14 +100,14 @@ function modalCobro(cid) {
 function pintarModalCobro() {
   const cid = UI.cobroCid, c = cliById(cid), ps = sinPagarDe(cid);
   const sel = ps.filter(p => UI.cobroSel.has(p.id)), base = sel.reduce((s, p) => s + calc(p).total, 0), env = UI.cobroEnv ? (+cfg('tarifaEnvio') || 0) : 0;
-  showModal(`<h3>🧾 Cobro agrupado · ${esc(c.nombre)}</h3><p class="small muted mb">Un solo total y un solo envío. Con un comprobante se marcan pagados todos juntos (Mabel también lo valida contra este total).</p>
+  showModal(`<h3>🧾 Cobro agrupado · ${esc(c.nombre)}</h3><p class="small muted mb">Un solo total y un solo envío. Con un comprobante se marcan pagados todos juntos (el agente también lo valida contra este total).</p>
     ${ps.map(p => `<label class="row" style="padding:6px 0;border-bottom:1px solid var(--bd)"><input type="checkbox" data-chg="cobroTog" data-id="${p.id}"${UI.cobroSel.has(p.id) ? ' checked' : ''}> <span class="grow" style="flex:1">#${p.num} · ${esc((liveById(p.liveId) || {}).nombre || '')}${p.guardadoSinPagar ? ' · 💤 guardado' : ''}</span><b class="mono">${fmt(calc(p).total)}</b></label>`).join('')}
     <label class="row mt"><input type="checkbox" data-chg="cobroEnv"${UI.cobroEnv ? ' checked' : ''}> Sumar el envío por cadetería (${fmt(+cfg('tarifaEnvio') || 0)})</label>
     <div class="tot-l big mt"><span>Total</span><span>${fmt(base + env)}</span></div>
     <div class="row mt"><button class="b ok" data-act="cobroCrear"${sel.length ? '' : ' disabled'}>✓ Armar cobro</button><button class="b gh" data-act="closeModal">Cancelar</button></div>`);
 }
 
-// ─── Conversaciones con Mabel ─────────────────────────────────
+// ─── Conversaciones con el agente ─────────────────────────────────
 const convActivas = () => DB.conversaciones.filter(v => v.estado === 'yanaina' && (!v.hasta || v.hasta > ahoraISO()));
 function devolverAMabel(id) {
   const v = DB.conversaciones.find(x => x.id === id); if (!v) return;
@@ -120,8 +120,8 @@ function avisosMabelHTML() {
   const venc = gspVencidos(), porCli = new Map();
   venc.forEach(p => { if (!porCli.has(p.clienteId)) porCli.set(p.clienteId, []); porCli.get(p.clienteId).push(p); });
   for (const [cid, ps] of porCli) { const c = cliById(cid) || { nombre: '?' }; h += `<div class="mb-av"><span class="grow">⏰ ${ps[0].guardadoSinPagar.hasta < hoyISO() ? 'Venció' : 'Vence hoy'} el guardado sin pagar de <b>${esc(c.nombre)}</b> (${ps.map(p => '#' + p.num).join(' · ')}): contactala vos</span><button class="b sm" data-act="tab" data-t="guardados">Ver</button></div>`; }
-  const nd = (DB.derivados || []).filter(d => d && !d.resuelto).length; // 11/11: la bandeja está en la pestaña Mabel
-  if (nd) h += `<div class="mb-av az"><span class="grow">🤖 ${nd} pendiente${nd > 1 ? 's' : ''} de Mabel para el equipo</span><button class="b sm" data-act="mbIrDerivados">Ver</button></div>`;
+  const nd = (DB.derivados || []).filter(d => d && !d.resuelto).length; // 11/11: la bandeja está en la pestaña WhatsApp
+  if (nd) h += `<div class="mb-av az"><span class="grow">🤖 ${nd} pendiente${nd > 1 ? 's' : ''} del agente para el equipo</span><button class="b sm" data-act="mbIrDerivados">Ver</button></div>`;
   return h;
 }
 function pintarAvisosMabel() {
@@ -148,7 +148,7 @@ function gspHTML() {
 const _renderGuardados = renderGuardados;
 renderGuardados = function () {
   _renderGuardados();
-  // Los guardados sin pagar de clientes autorizados no siguen el plazo de 30 días con avisos a el cliente
+  // Los guardados sin pagar de clientes autorizados no siguen el plazo de 30 días con avisos al cliente
   const ids = new Set(gspDe().map(p => p.id));
   document.querySelectorAll('#lista-guardados [data-act=irPedido]').forEach(b => { if (ids.has(b.dataset.id)) { const r = b.closest('.gd'); if (r) r.remove(); } });
   const l = $('#lista-guardados');
@@ -156,30 +156,30 @@ renderGuardados = function () {
   l.insertAdjacentHTML('afterbegin', gspHTML());
 };
 const _renderClientes2 = renderClientes;
-renderClientes = function () { _renderClientes2(); }; // 11/11: "Para el equipo" pasó a la pestaña Mabel → Derivados
+renderClientes = function () { _renderClientes2(); }; // 11/11: "Para el equipo" pasó a la pestaña WhatsApp → Derivados
 const _itemClienta2 = itemClienta;
 itemClienta = function (c, h) {
   let html = _itemClienta2(c, h);
   const extra = (c.puedeGuardarSinPagar ? '<span class="chip gu">💤 guarda sin pagar</span> ' : '') + (c.notaMabel ? `<div class="mb-nota">🤖 ${esc(c.notaMabel)}</div>` : '');
   if (extra) html = html.replace('<div class="row mt">', `<div class="mt">${extra}</div><div class="row mt">`);
   const nSin = sinPagarDe(c.id).length;
-  html = html.replace('<button class="b sm" data-act="clEdit"', `<button class="b sm" data-act="mbNota" data-cid="${c.id}" title="Nota para Mabel">🤖 Nota</button><button class="b sm${c.puedeGuardarSinPagar ? ' seg on' : ''}" data-act="mbGsp" data-cid="${c.id}" title="Puede guardar pedidos sin pagar">💤 ${c.puedeGuardarSinPagar ? 'Guarda sin pagar ✓' : 'Guardar sin pagar'}</button>${nSin >= 1 ? `<button class="b sm" data-act="cobroArmar" data-cid="${c.id}">🧾 Cobro (${nSin})</button>` : ''}<button class="b sm" data-act="clEdit"`);
+  html = html.replace('<button class="b sm" data-act="clEdit"', `<button class="b sm" data-act="mbNota" data-cid="${c.id}" title="Nota para el agente">🤖 Nota</button><button class="b sm${c.puedeGuardarSinPagar ? ' seg on' : ''}" data-act="mbGsp" data-cid="${c.id}" title="Puede guardar pedidos sin pagar">💤 ${c.puedeGuardarSinPagar ? 'Guarda sin pagar ✓' : 'Guardar sin pagar'}</button>${nSin >= 1 ? `<button class="b sm" data-act="cobroArmar" data-cid="${c.id}">🧾 Cobro (${nSin})</button>` : ''}<button class="b sm" data-act="clEdit"`);
   return html;
 };
-// Config: Mabel
+// Config: el agente
 function montarCfgMabel() {
-  const cf = document.getElementById('mbt-aj') || document.getElementById('p-config'); if (!cf || document.getElementById('cf-mabel')) return; // 11/11: va en la pestaña Mabel → Ajustes
+  const cf = document.getElementById('mbt-aj') || document.getElementById('p-config'); if (!cf || document.getElementById('cf-mabel')) return; // 11/11: va en la pestaña WhatsApp → Ajustes
   const d = document.createElement('div'); d.className = 'card'; d.id = 'cf-mabel';
-  d.innerHTML = `<div class="card-t">🤖 Mabel (agente de WhatsApp)</div>
+  d.innerHTML = `<div class="card-t">🤖 Agente de WhatsApp</div>
     <label class="lb">📣 Avisos de hoy (ej. “hoy no hay cadetería”). Los horarios de retiro se cargan más abajo, por fecha.</label>
     <textarea id="mb-nov" rows="3" data-chg="mbNov" placeholder="ej: Hoy retiro de 16 a 20 hs"></textarea>
     <div class="row mt"><label class="small muted">Vale hasta</label><input id="mb-vence" type="date" data-chg="mbNov" style="width:auto"><span class="small" id="mb-nov-est"></span></div>
     <div class="card-t mt">🏪 Horarios de retiro por fecha</div>
-    <div class="small muted">Mabel usa estos horarios con la fecha real (hoy, mañana, el viernes 6/11). Un día sin horario cargado: no da horario y le pide escribir el día antes. Las fechas pasadas se borran solas.</div>
+    <div class="small muted">El agente usa estos horarios con la fecha real (hoy, mañana, el viernes 6/11). Un día sin horario cargado: no da horario y le pide escribir el día antes. Las fechas pasadas se borran solas.</div>
     <div class="row mt" style="flex-wrap:wrap;gap:6px"><input id="mb-hr-f" type="date" style="width:auto"><input id="mb-hr-d" type="time" value="11:00" style="width:auto"><span class="small">a</span><input id="mb-hr-h" type="time" value="17:00" style="width:auto"><label class="small"><input id="mb-hr-c" type="checkbox"> Sin retiro ese día</label><button class="b sm" data-act="mbHrAdd">+ Agregar</button></div>
     <div id="mb-hr-lista" class="mt"></div>
-    <div class="card-t mt">🔕 Números que Mabel no contesta</div>
-    <div class="small muted">Proveedores, mayoristas, contactos personales. Mabel no les contesta ni los repasa (los mensajes igual te llegan al celular). Pegá uno por línea, con una etiqueta si querés: <b>099 123 456 proveedor Once</b></div>
+    <div class="card-t mt">🔕 Números que el agente no contesta</div>
+    <div class="small muted">Proveedores, mayoristas, contactos personales. El agente no les contesta ni los repasa (los mensajes igual te llegan al celular). Pegá uno por línea, con una etiqueta si querés: <b>099 123 456 proveedor Once</b></div>
     <textarea id="mb-ig-t" rows="3" class="mt" placeholder="099 123 456 proveedor Once&#10;098 765 432 personal"></textarea>
     <div class="row mt"><button class="b sm" data-act="mbIgAdd">+ Agregar</button></div>
     <div id="mb-ig-lista" class="mt"></div>
@@ -191,9 +191,9 @@ function montarCfgMabel() {
   const v = document.getElementById('cf-version'); if (v && v.parentNode === cf) cf.insertBefore(d, v); else cf.appendChild(d);
   // En Config queda un atajo, para quien la busque donde estaba
   const pc = document.getElementById('p-config');
-  if (pc && cf !== pc && !document.getElementById('cf-mabel-ir')) { const a = document.createElement('div'); a.className = 'card'; a.id = 'cf-mabel-ir'; a.innerHTML = '<div class="row"><span class="grow">🤖 Los ajustes de Mabel (avisos, horarios de retiro, números que no contesta) ahora están en la pestaña <b>Mabel</b>.</span><button class="b sm" data-act="mbIrAjustes">Ir a Ajustes</button></div>'; if (v && v.parentNode === pc) pc.insertBefore(a, v); else pc.appendChild(a); }
+  if (pc && cf !== pc && !document.getElementById('cf-mabel-ir')) { const a = document.createElement('div'); a.className = 'card'; a.id = 'cf-mabel-ir'; a.innerHTML = '<div class="row"><span class="grow">🤖 Los ajustes del agente (avisos, horarios de retiro, números que no contesta) ahora están en la pestaña <b>WhatsApp</b>.</span><button class="b sm" data-act="mbIrAjustes">Ir a Ajustes</button></div>'; if (v && v.parentNode === pc) pc.insertBefore(a, v); else pc.appendChild(a); }
 }
-// Horarios de retiro por fecha (5/11): lista [{fecha:'YYYY-MM-DD', desde:'11:00', hasta:'17:00', cerrado:bool}]. Mabel la lee en la nube.
+// Horarios de retiro por fecha (5/11): lista [{fecha:'YYYY-MM-DD', desde:'11:00', hasta:'17:00', cerrado:bool}]. El agente la lee en la nube.
 function horariosRetiro() { return (cfgN('horariosRetiro', []) || []).filter(x => x && x.fecha >= hoyISO()).sort((a, b) => a.fecha.localeCompare(b.fecha)); }
 function pintarHorariosRetiro() {
   const l = $('#mb-hr-lista'); if (!l) return;
@@ -201,7 +201,7 @@ function pintarHorariosRetiro() {
   const hs = horariosRetiro();
   l.innerHTML = hs.length ? hs.map(x => `<div class="row" style="justify-content:space-between;padding:4px 0"><span>${x.fecha === hoyISO() ? '<b>HOY</b> · ' : ''}${esc(f(x))}: ${x.cerrado ? '<b>sin retiro</b>' : esc(x.desde) + ' a ' + esc(x.hasta) + ' hs'}</span><button class="b sm" data-act="mbHrDel" data-f="${x.fecha}">✕</button></div>`).join('') : '<div class="small muted">Sin horarios cargados.</div>';
 }
-// Números ignorados (7/11): lista [{tel:'099123456', nota}]. Mabel la lee en la nube (config.mabelIgnorar).
+// Números ignorados (7/11): lista [{tel:'099123456', nota}]. El agente la lee en la nube (config.mabelIgnorar).
 function ignorados() { return (cfgN('mabelIgnorar', []) || []).map(x => typeof x === 'object' ? x : { tel: String(x), nota: '' }).filter(x => x && x.tel); }
 function pintarIgnorados() {
   const l = $('#mb-ig-lista'); if (!l) return;
@@ -213,7 +213,7 @@ function pintarCfgMabel() {
   const n = cfgN('novedadesHoy', null) || {}, a = document.activeElement;
   if (a !== $('#mb-nov')) $('#mb-nov').value = n.texto || '';
   if (a !== $('#mb-vence')) $('#mb-vence').value = n.vence || hoyISO();
-  $('#mb-nov-est').innerHTML = n.texto ? (novedadesVigentes() ? '<span class="c-ok">✓ vigente</span>' : '<span class="c-li">vencida: Mabel no la usa</span>') : '';
+  $('#mb-nov-est').innerHTML = n.texto ? (novedadesVigentes() ? '<span class="c-ok">✓ vigente</span>' : '<span class="c-li">vencida: el agente no la usa</span>') : '';
   pintarHorariosRetiro();
   pintarIgnorados();
   $('#mb-dia').value = cfgN('diaOtrasAgencias', 'viernes');
@@ -228,7 +228,7 @@ const _renderBadges = renderBadges;
 renderBadges = function () { _renderBadges(); const v = gspVencidos().length, b = $('#bdg-guard'); if (v && b) b.insertAdjacentHTML('beforeend', ` <span class="bdg red">⏰${v}</span>`); };
 
 Object.assign(ACT, {
-  mbNota: d => { const c = cliById(d.cid); if (!c) return; const v = prompt(`Nota para Mabel sobre ${c.nombre} (máx. 3 líneas, solo hechos):`, c.notaMabel || ''); if (v === null) return; c.notaMabel = v.trim().slice(0, 300); if (!c.notaMabel) delete c.notaMabel; saveClientes(); render(); },
+  mbNota: d => { const c = cliById(d.cid); if (!c) return; const v = prompt(`Nota para el agente sobre ${c.nombre} (máx. 3 líneas, solo hechos):`, c.notaMabel || ''); if (v === null) return; c.notaMabel = v.trim().slice(0, 300); if (!c.notaMabel) delete c.notaMabel; saveClientes(); render(); },
   mbGsp: d => {
     const c = cliById(d.cid); if (!c) return;
     c.puedeGuardarSinPagar = !c.puedeGuardarSinPagar;
@@ -248,7 +248,7 @@ Object.assign(ACT, {
   },
   cobroCuenta: d => { const k = DB.cobros.find(x => x.id === d.id); if (!k) return; const gs = pagarCobro(k, d.c); closeModal(); toast(`✓ Pagado por ${d.c}: ${gs.length} pedido(s)`); render(); },
   cobroAnular: d => { const k = DB.cobros.find(x => x.id === d.id); if (!k || !confirm('¿Anular este cobro agrupado? Los pedidos quedan como estaban.')) return; k.estado = 'anulado'; saveCobros(); render(); },
-  convDevolver: d => { devolverAMabel(d.id); toast('↩️ Mabel vuelve a atender esa conversación'); render(); }
+  convDevolver: d => { devolverAMabel(d.id); toast('↩️ El agente vuelve a atender esa conversación'); render(); }
 });
 Object.assign(ACT, {
   mbHrAdd: () => {
@@ -271,7 +271,7 @@ Object.assign(ACT, {
     if (!n) return toast(mal ? 'No entendí el número: pegá uno por línea (ej. 099 123 456 proveedor)' : 'Ya estaban cargados o no hay nada para agregar');
     saveConfig({ mabelIgnorar: lista }); $('#mb-ig-t').value = ''; toast('✓ ' + n + ' número(s) agregado(s)' + (mal ? ' · ' + mal + ' línea(s) sin entender' : '')); pintarCfgMabel();
   },
-  mbIgDel: d => { saveConfig({ mabelIgnorar: ignorados().filter(x => x.tel !== d.t) }); toast('✓ Quitado: Mabel vuelve a contestarle'); pintarCfgMabel(); },
+  mbIgDel: d => { saveConfig({ mabelIgnorar: ignorados().filter(x => x.tel !== d.t) }); toast('✓ Quitado: el agente vuelve a contestarle'); pintarCfgMabel(); },
   mbHrDel: d => { saveConfig({ horariosRetiro: horariosRetiro().filter(x => x.fecha !== d.f) }); toast('✓ Quitado'); pintarCfgMabel(); }
 });
 Object.assign(CHG, {
@@ -285,7 +285,7 @@ Object.assign(CHG, {
 // Para liberar = pedidos sin pagar con el plazo vencido. La app solo los marca: liberar es siempre con un toque de alguien del equipo.
 const HORA_LIBERAR = CORTES.horaLiberar;   // negocio.js
 const plazoPagoDias = () => Math.max(1, +cfgN('plazoPagoDias', 2) || 2);   // el pago es el día siguiente al live; se libera a las 16:00 del día después
-// Límite del pedido normal (31/10): el día SIGUIENTE a la fecha de pago del live, a las 16:00 (tolerancia que no se le dice a el cliente).
+// Límite del pedido normal (31/10): el día SIGUIENTE a la fecha de pago del live, a las 16:00 (tolerancia que no se le dice al cliente).
 // Lives viejos sin fecha real: como antes, creado + plazoPagoDias.
 function limitePagoNormal(p) { const l = liveById(p.liveId); return l && l.fechaPagoISO ? sumarDias(l.fechaPagoISO, 1) : sumarDias(p.fechas.creado || hoyISO(), plazoPagoDias()); }
 const limiteDe = p => p.estado === 'guardado' ? (p.guardadoSinPagar && p.guardadoSinPagar.hasta) : limitePagoNormal(p);
@@ -368,7 +368,7 @@ avisosMabelHTML = function () {
 pintarAvisosMabel();
 
 // ─── Avisos de arriba plegados (4/11) ──────────────────────────
-// Se ve uno solo (el de Mabel si hay) con un botón "+N ▾" para desplegar el resto; así no tapan la pantalla en el live.
+// Se ve uno solo (el del agente si hay) con un botón "+N ▾" para desplegar el resto; así no tapan la pantalla en el live.
 // La elección queda guardada en este equipo.
 (function () {
   const st = document.createElement('style');

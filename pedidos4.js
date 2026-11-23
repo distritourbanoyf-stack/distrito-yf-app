@@ -86,7 +86,7 @@ if (typeof buscarEnter === 'function') {
 // ─── Cálculo del pedido con promos y VIP ──────────────────────
 const vipPctCfg = () => { const v = DB.config.vipPct; return Math.max(0, v === undefined || v === null || v === '' ? 5 : +v || 0); };   // cfg() de Pedidos no tiene valor por defecto
 const editable = p => p.estado === 'pendiente' && !(typeof pagado === 'function' && pagado(p)) && !p.cambio;
-/** Guarda en el pedido las promos que valen hoy (solo las que tocan sus prendas) y el % VIP de el cliente. */
+/** Guarda en el pedido las promos que valen hoy (solo las que tocan sus prendas) y el % VIP del cliente. */
 function refrescarPromos(p) {
   if (!p || !editable(p)) return;
   const mids = new Set(p.prendas.map(pr => modeloDeStock(pr.stockId)).filter(Boolean));
@@ -152,7 +152,7 @@ function textoBienvenidaVip(nombre) {
   const link = String(cfg('vipGrupo') || '').trim();
   return (cfg('vipMensaje') || VIP_MSG_DEF).replace(/\{nombre\}/g, nombre).replace(/\{descuento\}/g, vipPctCfg()) + (link ? '\n\nSumate al grupo: ' + link : '');
 }
-/** Recalcula los pedidos abiertos de el cliente (al hacerla VIP o sacarla). */
+/** Recalcula los pedidos abiertos del cliente (al hacerla VIP o sacarla). */
 function recalcPedidosDe(cid) { todosPedidos().filter(p => p.clienteId === cid && editable(p)).forEach(p => recalcSaldo(p)); }
 function hacerVip(c, si) {
   if (si) { c.vip = true; c.vipDesde = c.vipDesde || hoyISO(); }

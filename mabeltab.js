@@ -1,10 +1,10 @@
 'use strict';
 /* ══════════════════════════════════════════════════════════════
    DISTRITO YF PEDIDOS · PESTAÑA MABEL (11/11)
-   Todo lo de Mabel en un solo lugar, entre Live y Clientes:
-   - Derivados: bandeja de lo que Mabel le pasa al equipo, por categoría. Queda pendiente hasta tocar "Resuelto"
-     (tabla derivados: una fila por derivación, la escribe Mabel; la app solo marca resuelto o cambia la categoría).
-   - Conversaciones: quién tiene cada chat (Mabel o el equipo) y los mensajes, solo lectura.
+   Todo lo del agente en un solo lugar, entre Live y Clientes:
+   - Derivados: bandeja de lo que el agente le pasa al equipo, por categoría. Queda pendiente hasta tocar "Resuelto"
+     (tabla derivados: una fila por derivación, la escribe el agente; la app solo marca resuelto o cambia la categoría).
+   - Conversaciones: quién tiene cada chat (el agente o el equipo) y los mensajes, solo lectura.
    - Ajustes: pausa, avisos del día, horarios de retiro, números ignorados (antes en Config).
    - Chat madre: todavía no está.
    Los clientes se muestran con el nombre de su ficha (se busca por teléfono), no por el número.
@@ -37,13 +37,13 @@ const saveDerivados = () => put('emma_derivados', DB.derivados);
 
 const MB_CATS = [
   ['pedido', '🔴', 'Problema con el pedido'], ['pago', '💰', 'Pagos'], ['entrega', '🚚', 'Entrega'], ['cambio', '🔄', 'Cambios'],
-  ['especial', '🛍️', 'Pedidos especiales'], ['yharol', '💄', 'Yharol'], ['otros', '❓', 'Otros']
+  ['especial', '🛍️', 'Pedidos especiales'], ['otros', '❓', 'Otros']
 ];
 const mbCat = k => MB_CATS.find(c => c[0] === k) || MB_CATS[MB_CATS.length - 1];
 const mbCatIdx = k => MB_CATS.indexOf(mbCat(k));
 UI.mb = { sub: 'derivados', cat: 'todas', sinPed: false, verRes: false, q: '', dq: '', convF: 'todas', vincTel: '' };
 
-// ─── Nombre de el cliente a partir del teléfono ───────────────
+// ─── Nombre del cliente a partir del teléfono ───────────────
 /** Índice por render: pedidos abiertos y último pedido de cada cliente. */
 function mbIndice() {
   const ix = new Map();
@@ -86,13 +86,13 @@ function dvItemHTML(d, ix) {
   const conYana = cv && cv.estado === 'yanaina' && (!cv.hasta || cv.hasta > ahoraISO());
   return `<div class="dv c-${k}${d.resuelto ? ' res' : ''}">
     <div class="row" style="align-items:flex-start"><div class="grow">${mbQuienHTML(d.tel || d.telKey, f)}</div><span class="small muted">${fechaHoraCorta(d.ultimo || d.creado)}</span></div>
-    <div class="dv-chips"><span class="chip">${ico} ${esc(nom)}</span>${mbPedidosHTML(f)}${d.silencio ? '<span class="chip" title="Mabel no le dijo nada a el cliente sobre esto">🔕 no se le avisó</span>' : ''}${d.veces > 1 ? `<span class="chip">×${+d.veces}</span>` : ''}${d.resuelto ? `<span class="chip ok">✓ ${fechaHoraCorta(d.resuelto)}</span>` : ''}</div>
+    <div class="dv-chips"><span class="chip">${ico} ${esc(nom)}</span>${mbPedidosHTML(f)}${d.silencio ? '<span class="chip" title="El agente no le dijo nada al cliente sobre esto">🔕 no se le avisó</span>' : ''}${d.veces > 1 ? `<span class="chip">×${+d.veces}</span>` : ''}${d.resuelto ? `<span class="chip ok">✓ ${fechaHoraCorta(d.resuelto)}</span>` : ''}</div>
     <div class="dv-mot">${esc(d.motivo || 'Sin motivo')}</div>
     <div class="row mt">${d.resuelto ? `<button class="b sm" data-act="dvDeshacer" data-id="${esc(d.id)}">↩︎ Volver a pendiente</button>`
       : `<button class="b sm ok" data-act="dvResolver" data-id="${esc(d.id)}">✓ Resuelto</button>`}
       <button class="b sm" data-act="mbVerChat" data-tel="${esc(d.telKey)}">👁 Ver mensajes</button><button class="b sm" data-act="mbWA" data-tel="${esc(d.tel || d.telKey)}">💬 WhatsApp</button>${mbFichaBtn(d.tel || d.telKey, f)}
       ${d.resuelto ? '' : `<select data-chg="dvCat" data-id="${esc(d.id)}" title="Cambiar la categoría">${MB_CATS.map(c => `<option value="${c[0]}"${c[0] === k ? ' selected' : ''}>${c[1]} ${esc(c[2])}</option>`).join('')}</select>`}
-      ${conYana && !d.resuelto ? `<button class="b sm gh" data-act="convDevolver" data-id="${esc(cv.id)}" title="Mabel vuelve a atender esta conversación ya">↩️ Devolver a Mabel</button>` : ''}</div>
+      ${conYana && !d.resuelto ? `<button class="b sm gh" data-act="convDevolver" data-id="${esc(cv.id)}" title="El agente vuelve a atender esta conversación ya">↩️ Devolver al agente</button>` : ''}</div>
   </div>`;
 }
 /** 14/11: buscador de Derivados. Busca por nombre, alias o usuario de la ficha y por teléfono (3 dígitos o más). */
@@ -117,7 +117,7 @@ function renderDerivados() {
     + MB_CATS.map(c => `<button class="ptab${UI.mb.cat === c[0] ? ' on' : ''}${cuenta[c[0]] ? '' : ' vac'}" data-act="dvFiltro" data-k="${c[0]}">${c[1]} ${esc(c[2])}<span class="n">${cuenta[c[0]] || 0}</span></button>`).join('')
     + `<button class="ptab${UI.mb.sinPed ? ' on' : ''}${nSin ? '' : ' vac'}" data-act="dvSinPed" title="Solo las que no tienen pedido abierto">Sin pedido<span class="n">${nSin}</span></button></div>`;
   h += lista.length ? lista.map(d => dvItemHTML(d, ix)).join('')
-    : `<div class="empty">${q ? 'Ningún pendiente con esa búsqueda' : pend.length ? 'No hay pendientes con este filtro' : '🎉 No hay nada pendiente: Mabel no te pasó nada o ya está todo resuelto'}</div>`;
+    : `<div class="empty">${q ? 'Ningún pendiente con esa búsqueda' : pend.length ? 'No hay pendientes con este filtro' : '🎉 No hay nada pendiente: el agente no te pasó nada o ya está todo resuelto'}</div>`;
   if (res.length) h += `<div class="row mt" data-act="dvVerRes" style="cursor:pointer"><span class="small muted">${q ? 'Resueltos' : 'Resueltos hoy'} (${res.length})</span><span class="grow"></span><span class="muted">${UI.mb.verRes ? '▲' : '▼'}</span></div>`
     + (UI.mb.verRes ? '<div class="mt">' + res.map(d => dvItemHTML(d, ix)).join('') + '</div>' : '');
   $('#mbt-deriv').innerHTML = h;
@@ -131,7 +131,7 @@ function renderConversaciones() {
   const todas = (DB.conversaciones || []).filter(v => v && v.id).map(v => ({ v, f: mbFicha(v.tel || v.id, ix) }));
   const es = { todas: () => true, yanaina: x => cvConYana(x.v), mabel: x => !cvConYana(x.v), sinped: x => !x.f || !x.f.abiertos.length };
   const n = k => todas.filter(es[k]).length;
-  $('#mbt-conv-f').innerHTML = [['todas', 'Todas'], ['yanaina', '🙋 Los tiene el equipo'], ['mabel', '🤖 Los tiene Mabel'], ['sinped', 'Sin pedido']]
+  $('#mbt-conv-f').innerHTML = [['todas', 'Todas'], ['yanaina', '🙋 Los tiene el equipo'], ['mabel', '🤖 Los tiene el agente'], ['sinped', 'Sin pedido']]
     .map(([k, t]) => `<button class="ptab${UI.mb.convF === k ? ' on' : ''}" data-act="cvFiltro" data-k="${k}">${t}<span class="n">${n(k)}</span></button>`).join('');
   let ls = todas.filter(es[UI.mb.convF] || es.todas);
   if (q) ls = ls.filter(({ v, f }) => (qd.length >= 3 && String(v.tel || v.id).replace(/\D/g, '').includes(qd)) || (f && [f.c.nombre, f.c.ref, ...(f.c.alias || [])].some(s => norm(s).includes(q))));
@@ -139,9 +139,9 @@ function renderConversaciones() {
   const tope = 50, total = ls.length; ls = ls.slice(0, tope);
   $('#mbt-conv-l').innerHTML = (ls.length ? ls.map(({ v, f }) => `<div class="dv">
       <div class="row" style="align-items:flex-start"><div class="grow">${mbQuienHTML(v.tel || v.id, f)}</div><span class="small muted">${fechaHoraCorta(cvUltimo(v))}</span></div>
-      <div class="dv-chips">${cvConYana(v) ? '<span class="chip pe">🙋 Lo tiene el equipo</span>' : '<span class="chip ac">🤖 Lo tiene Mabel</span>'}${mbPedidosHTML(f)}</div>
+      <div class="dv-chips">${cvConYana(v) ? '<span class="chip pe">🙋 Lo tiene el equipo</span>' : '<span class="chip ac">🤖 Lo tiene el agente</span>'}${mbPedidosHTML(f)}</div>
       ${cvConYana(v) && v.motivo ? `<div class="dv-mot">${esc(v.motivo)}</div>` : ''}
-      <div class="row mt"><button class="b sm" data-act="mbVerChat" data-tel="${esc(v.id)}">👁 Ver mensajes</button><button class="b sm" data-act="mbWA" data-tel="${esc(v.tel || v.id)}">💬 WhatsApp</button>${mbFichaBtn(v.tel || v.id, f)}${cvConYana(v) ? `<button class="b sm gh" data-act="convDevolver" data-id="${esc(v.id)}">↩️ Devolver a Mabel</button>` : ''}</div>
+      <div class="row mt"><button class="b sm" data-act="mbVerChat" data-tel="${esc(v.id)}">👁 Ver mensajes</button><button class="b sm" data-act="mbWA" data-tel="${esc(v.tel || v.id)}">💬 WhatsApp</button>${mbFichaBtn(v.tel || v.id, f)}${cvConYana(v) ? `<button class="b sm gh" data-act="convDevolver" data-id="${esc(v.id)}">↩️ Devolver al agente</button>` : ''}</div>
     </div>`).join('') : `<div class="empty">${q ? 'Sin resultados' : 'No hay conversaciones'}</div>`)
     + (total > tope ? `<div class="small muted mt">Se muestran las ${tope} más recientes de ${total}. Usá el buscador para encontrar otra.</div>` : '');
 }
@@ -156,7 +156,7 @@ async function mbVerChat(k) {
     if (r.error) throw new Error(r.error.message); ms = r.data || [];
   } catch (e) { err = String(e.message || e); }
   if (!$('#modal').classList.contains('on')) return; // la cerró mientras cargaba
-  const quien = { in: '', out: '🤖 Mabel', echo: '🙋‍♀️ Equipo', plantilla: '📨 Mensaje de la app' };
+  const quien = { in: '', out: '🤖 Agente', echo: '🙋‍♀️ Equipo', plantilla: '📨 Mensaje de la app' };
   const cuerpo = err ? `<div class="alert li">No se pudieron traer los mensajes (${esc(err)}). Hace falta internet.</div>`
     : !ms.length ? '<div class="empty">No hay mensajes guardados de este número</div>'
     : `<div class="mbt-chat" id="mbt-chat">${ms.filter(m => !['edit', 'revoke', 'system', 'ephemeral'].includes(m.tipo)).reverse().map(m => {
@@ -171,7 +171,7 @@ async function mbVerChat(k) {
 // ─── Vincular un número a una ficha ───────────────────────────
 function mbVincModal(tel) {
   UI.mb.vincTel = tel;
-  showModal(`<h3>🔗 ¿De quién es el ${esc(mbTelLindo(tel))}?</h3><p class="small muted mb">Buscá la ficha de el cliente para ponerle este teléfono, o creá una nueva.</p>
+  showModal(`<h3>🔗 ¿De quién es el ${esc(mbTelLindo(tel))}?</h3><p class="small muted mb">Buscá la ficha del cliente para ponerle este teléfono, o creá una nueva.</p>
     <input id="mbv-q" data-inp="mbVincQ" placeholder="🔎 Nombre o usuario de TikTok…" autocomplete="off"><div id="mbv-res" class="mt"></div>
     <div class="row mt"><button class="b sm" data-act="mbVincNueva">+ Crear ficha nueva</button><span class="grow"></span><button class="b gh" data-act="closeModal">Cancelar</button></div>`);
   setTimeout(() => { const el = $('#mbv-q'); if (el) el.focus(); }, 40);
@@ -186,8 +186,8 @@ function mbVincPintar() {
 }
 
 // ─── Ajustes ──────────────────────────────────────────────────
-// 14/11: modo ausente (viaje). Lo lee Mabel en config.mabelAusente.
-// 14/11 tarde: se puede programar (desde/hasta). Mabel lo prende sola al llegar "desde" y lo apaga sola al terminar "hasta".
+// 14/11: modo ausente (viaje). Lo lee el agente en config.mabelAusente.
+// 14/11 tarde: se puede programar (desde/hasta). El agente se prende solo al llegar "desde" y lo apaga sola al terminar "hasta".
 const mbAusenteOn = au => !!au && au.activo === true && (!au.hasta || au.hasta >= hoyISO());          // prendido o programado
 const mbAusenteProg = au => mbAusenteOn(au) && !!au.desde && au.desde > ahoraISO();                  // programado, todavía no empezó
 const mbDiaHoraAu = iso => { const d = new Date(iso); return mbDiaAu(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')) + (d.getHours() || d.getMinutes() ? ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : ' 00:00'); };
@@ -197,10 +197,10 @@ function renderAjustesMabel() {
   const activa = cfgN('mabelActiva', true) !== false, solo = cfgN('mabelSolo', []) || [];
   const hoy = typeof horariosRetiro === 'function' && horariosRetiro().some(x => x.fecha === hoyISO());
   const au = cfgN('mabelAusente', null) || {}, auOn = mbAusenteOn(au);
-  const h = `<div class="mbt-est"><div class="row"><b class="grow">${activa ? '🟢 Mabel está atendiendo' : '⏸️ Mabel está en pausa: no le contesta a nadie'}</b>
-      <button class="b sm${activa ? ' dan' : ' ok'}" data-act="mbPausa">${activa ? '⏸️ Pausar a Mabel' : '▶️ Activar a Mabel'}</button></div>
-      ${Array.isArray(solo) && solo.length ? `<div class="alert pe">Modo piloto: Mabel solo le contesta a ${solo.length} número(s).</div>` : ''}
-      ${hoy ? '' : '<div class="alert pe">⚠️ No hay horario de retiro cargado para hoy: Mabel no le va a dar horario a nadie. Cargalo más abajo.</div>'}</div>
+  const h = `<div class="mbt-est"><div class="row"><b class="grow">${activa ? '🟢 El agente está atendiendo' : '⏸️ El agente está en pausa: no le contesta a nadie'}</b>
+      <button class="b sm${activa ? ' dan' : ' ok'}" data-act="mbPausa">${activa ? '⏸️ Pausar al agente' : '▶️ Activar al agente'}</button></div>
+      ${Array.isArray(solo) && solo.length ? `<div class="alert pe">Modo piloto: el agente solo le contesta a ${solo.length} número(s).</div>` : ''}
+      ${hoy ? '' : '<div class="alert pe">⚠️ No hay horario de retiro cargado para hoy: el agente no le va a dar horario a nadie. Cargalo más abajo.</div>'}</div>
     <div class="mbt-est"><div class="row"><b class="grow">${!auOn ? '✈️ Modo ausente apagado' : mbAusenteProg(au) ? '✈️ Modo ausente PROGRAMADO: se prende solo el ' + esc(mbDiaHoraAu(au.desde)) + ' y se apaga solo al terminar el ' + esc(mbDiaAu(au.hasta)) : '✈️ Modo ausente PRENDIDO hasta el ' + esc(mbDiaAu(au.hasta)) + ' (se apaga solo)'}</b>
       <button class="b sm${auOn ? ' ok' : ''}" data-act="mbAusente">${!auOn ? 'Programar modo ausente' : mbAusenteProg(au) ? 'Cancelar programación' : 'Apagar modo ausente'}</button></div>${auOn && au.texto ? `<div class="small muted mt">Mensaje: "${esc(au.texto)}"</div>` : ''}
       <div class="small muted">${auOn ? 'A cada cliente le contesta una sola vez: "' + esc(mbTextoAu(au)) + '". No marca pagos, no toma entregas ni deriva. Se apaga solo al terminar ese día.' : 'Para el viaje: a cada cliente le contesta una sola vez que están de viaje y nada más.'}</div></div>`;
@@ -248,7 +248,7 @@ Object.assign(ACT, {
   },
   mbVincNueva: () => {
     const tel = UI.mb.vincTel; if (!telKey(tel)) return;
-    const nombre = (prompt('Nombre o usuario de TikTok de el cliente:', (($('#mbv-q') || {}).value || '').trim()) || '').trim(); if (!nombre) return;
+    const nombre = (prompt('Nombre o usuario de TikTok del cliente:', (($('#mbv-q') || {}).value || '').trim()) || '').trim(); if (!nombre) return;
     const c = nuevaClienta(nombre, mbTelLindo(tel).replace(/\s/g, '')); DB.clientes.push(c); saveClientes(); closeModal(); toast(`✓ Ficha creada: ${c.nombre}`); render();
   },
   mbAusente: () => {
@@ -269,15 +269,15 @@ Object.assign(ACT, {
     if (!hasta) return;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(hasta) || hasta < desdeF) { alert('La fecha tiene que ser AAAA-MM-DD y no antes del día de inicio (ej. 2026-11-20).'); return; }
     const def = mbTextoAu({ hasta });
-    const texto = (prompt('Mensaje que le manda Mabel a cada cliente, una sola vez:', def) || '').trim();
+    const texto = (prompt('Mensaje que le manda el agente a cada cliente, una sola vez:', def) || '').trim();
     if (!texto) return;
-    if (!confirm('¿' + (desdeF === hoyISO() ? 'Prender' : 'Programar') + ' el modo ausente?\n\nDel ' + mbDiaHoraAu(desde) + ' al ' + mbDiaAu(hasta) + ' (inclusive), Mabel le contesta a cada cliente una sola vez:\n\n"' + texto + '"\n\ny nada más (no marca pagos, no toma entregas, no deriva). Se prende y se apaga solo.')) return;
+    if (!confirm('¿' + (desdeF === hoyISO() ? 'Prender' : 'Programar') + ' el modo ausente?\n\nDel ' + mbDiaHoraAu(desde) + ' al ' + mbDiaAu(hasta) + ' (inclusive), el agente le contesta a cada cliente una sola vez:\n\n"' + texto + '"\n\ny nada más (no marca pagos, no toma entregas, no deriva). Se prende y se apaga solo.')) return;
     saveConfig({ mabelAusente: { activo: true, hasta, texto, desde, apagado: null } }); toast(desdeF === hoyISO() ? '✈️ Modo ausente prendido' : '✈️ Modo ausente programado'); render();
   },
   mbPausa: () => {
     const activa = cfgN('mabelActiva', true) !== false;
-    if (!confirm(activa ? '¿Pausar a Mabel?\n\nDeja de contestarle a TODOS los clientes hasta que la vuelvas a activar. Los mensajes siguen llegando al celular.' : '¿Activar a Mabel?\n\nVuelve a contestar los mensajes que lleguen desde ahora.')) return;
-    saveConfig({ mabelActiva: !activa }); toast(activa ? '⏸️ Mabel en pausa' : '▶️ Mabel activa'); render();
+    if (!confirm(activa ? '¿Pausar al agente?\n\nDeja de contestarle a TODOS los clientes hasta que la vuelvas a activar. Los mensajes siguen llegando al celular.' : '¿Activar al agente?\n\nVuelve a contestar los mensajes que lleguen desde ahora.')) return;
+    saveConfig({ mabelActiva: !activa }); toast(activa ? '⏸️ Agente en pausa' : '▶️ Agente activo'); render();
   }
 });
 Object.assign(CHG, {

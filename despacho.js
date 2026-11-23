@@ -1,7 +1,7 @@
 'use strict';
 /* ══════════════════════════════════════════════════════════════
    DISTRITO YF · DESPACHO (reemplaza a Salidas)
-   Buscás o escaneás → ves los pedidos abiertos de el cliente → tildás →
+   Buscás o escaneás → ves los pedidos abiertos del cliente → tildás →
    elegís cómo sale (Retiro / Agencia / Cadetería / Guardado / Liberado) → listo.
    Cada salida queda como un "paquete" (tabla paquetes) y lleva una sola etiqueta.
    Si un pedido no figura pagado, avisa y deja marcar "Pagó" con la cuenta (tabla pagos).
@@ -14,7 +14,7 @@
 .dsp-p{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--s1);margin-bottom:8px;cursor:pointer;user-select:none}
 .dsp-p.on{border-color:var(--ac);background:var(--ac2)}
 .dsp-chk{width:26px;height:26px;border:2px solid var(--mu);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;color:#fff}
-.dsp-p.on .dsp-chk{background:var(--ac);border-color:var(--ac)}
+.dsp-p.on .dsp-chk{background:var(--ac);border-color:var(--ac);color:#0e0e10}
 .dsp-p .pc-tot{font-size:16px}
 .dsp-segs{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .dsp-segs .b{padding:11px 4px;font-size:13px;white-space:normal;text-align:center}
@@ -84,7 +84,7 @@ function abiertosDe(cid) {
   return todosPedidos().filter(p => p.clienteId === cid && sinSalir(p))
     .sort((a, b) => (a.fechas.creado || '').localeCompare(b.fechas.creado || '') || a.num - b.num);
 }
-/** 7/11: lo que deja Mabel en el pedido. avisoDespacho = aviso corto para el momento de cerrar ("tiene paquete de Yharol"); retiroCuando = cuándo dijo que pasa a retirar {fecha, hora, texto}. Se ven solo mientras el pedido no salió. */
+/** 7/11: lo que deja el agente en el pedido. avisoDespacho = aviso corto para el momento de cerrar ("tiene paquete de Yharol"); retiroCuando = cuándo dijo que pasa a retirar {fecha, hora, texto}. Se ven solo mientras el pedido no salió. */
 const avisosDe = ps => [...new Set(ps.map(p => String(p.avisoDespacho || '').trim()).filter(Boolean))];
 const DIA_CORTO = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 function retiroDiaTxt(fecha) {
@@ -273,7 +273,7 @@ function clientaHTML() {
   for (const id of [...D.sel]) if (!ab.some(p => p.id === id)) D.sel.delete(id);
   const alertas = [];
   if (D.aviso) alertas.push(`<div class="alert pe">${D.aviso}</div>`);
-  // 7/11: avisos de Mabel (lo que el cliente le dijo) y cuándo pasa a retirar: arriba de todo, para verlos al cerrar
+  // 7/11: avisos del agente (lo que el cliente le dijo) y cuándo pasa a retirar: arriba de todo, para verlos al cerrar
   const rcs = [...new Set(ab.filter(p => entregaEf(p) === 'retiro').map(retiroCuandoTxt).filter(Boolean))];
   if (rcs.length) alertas.unshift(`<div class="alert pe">🕒 Dijo que pasa a retirar: <b>${rcs.map(esc).join(' · ')}</b></div>`);
   avisosDe(ab).reverse().forEach(t => alertas.unshift(`<div class="alert" style="background:#fff3bf;border:1px solid #e0b400;color:#5a4300;font-weight:700">📌 ${esc(t)}</div>`));
@@ -303,7 +303,7 @@ function clientaHTML() {
     ${salidasRecientesHTML(c)}
     ${D.sel.size ? salidaHTML(c, ab.filter(p => D.sel.has(p.id))) : (ab.length ? '<div class="small muted" style="text-align:center;margin:6px 0 14px">Tildá los pedidos que salen</div>' : '')}`;
 }
-/** 10/11: salidas recientes de el cliente (últimos 14 días): cuándo se marcó, por dónde salió y con qué pago. Con ↩️ Deshacer. */
+/** 10/11: salidas recientes del cliente (últimos 14 días): cuándo se marcó, por dónde salió y con qué pago. Con ↩️ Deshacer. */
 function salidasRecientesHTML(c) {
   const lim = Date.now() - 14 * 864e5, hh = iso => { const x = new Date(iso); return pad2(x.getHours()) + ':' + pad2(x.getMinutes()); };
   const ks = (DB.paquetes || []).filter(k => k.clienteId === c.id && new Date(k.fecha).getTime() >= lim).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 4);
@@ -318,7 +318,7 @@ function salidasRecientesHTML(c) {
       ${k.tipo !== 'retiro' ? `<button class="b sm" data-act="despPrint" data-k="${k.id}" title="Reimprimir etiqueta">🖨️</button>` : ''}<button class="b sm gh" data-act="despDeshacer" data-k="${k.id}" title="Deshacer la salida">↩️ Deshacer</button></div></div>`;
   }).join('');
 }
-/** Último pedido de el cliente (cualquier estado), por fecha y número. */
+/** Último pedido del cliente (cualquier estado), por fecha y número. */
 function ultimoPedidoDe(cid) {
   return todosPedidos().filter(p => p.clienteId === cid).sort((a, b) => (b.fechas.creado || '').localeCompare(a.fechas.creado || '') || b.num - a.num)[0] || null;
 }

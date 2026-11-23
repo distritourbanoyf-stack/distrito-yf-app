@@ -11,7 +11,7 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&display=swap');
 :root{
   --bg:#0e0e10;--s1:#18181b;--s2:#222226;--s3:#2b2b30;--bd:#313137;--tx:#f2f2f3;--mu:#8d8d96;
-  --ac:#e9b949;--ac2:#e9b94922;
+  --ac:#f2f2f2;--ac2:#ffffff1c;
   --ok:#22c55e;--ok2:#22c55e22;--pe:#f59e0b;--pe2:#f59e0b22;--gu:#a78bfa;--gu2:#a78bfa22;--li:#ef4444;--li2:#ef444422;
   --bl:#74b9ff;
   --mono:'DM Mono',ui-monospace,Menlo,monospace;--sans:'DM Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
@@ -21,7 +21,7 @@ html{-webkit-text-size-adjust:100%}
 body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:14px;min-height:100vh;padding:16px 16px 60px;max-width:1080px;margin:0 auto;overflow-x:hidden}
 [hidden]{display:none!important}
 header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#f3d27a,#c9932a);display:flex;align-items:center;justify-content:center;font-size:17px}
+.logo{width:34px;height:34px;border-radius:10px;background:#0e0e10;border:1px solid var(--bd);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:17px}
 h1{font-size:19px;font-weight:800;letter-spacing:-.3px;white-space:nowrap}h1 span{color:var(--ac)}
 .tabs{display:flex;gap:4px;background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:4px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
@@ -55,13 +55,13 @@ label.lb{display:block;font-size:11.5px;color:var(--mu);margin:0 0 4px 2px}
 .b.sm{padding:6px 10px;font-size:12.5px;border-radius:8px}
 .b.lg{padding:13px 18px;font-size:16px;border-radius:12px}
 .b.blk{width:100%}
-.b.pri{background:var(--ac);border-color:var(--ac);color:#231800}
+.b.pri{background:var(--ac);border-color:var(--ac);color:#0e0e10}
 .b.ok{background:var(--ok);border-color:var(--ok);color:#052e14}
 .b.dan{background:transparent;color:var(--li);border-color:#ef444466}
 .b.gh{background:transparent}
 .b.seg.on{background:var(--ac2);border-color:var(--ac);color:var(--tx)}
 .b:disabled{opacity:.45;cursor:default}
-.bdg{display:inline-block;background:var(--ac);color:#231800;font:700 10.5px var(--sans);padding:2px 7px;border-radius:10px;vertical-align:middle}
+.bdg{display:inline-block;background:var(--ac);color:#0e0e10;font:700 10.5px var(--sans);padding:2px 7px;border-radius:10px;vertical-align:middle}
 .chip{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--s3);color:var(--mu);white-space:nowrap}
 .chip.ok{background:var(--ok2);color:var(--ok)}.chip.pe{background:var(--pe2);color:var(--pe)}.chip.gu{background:var(--gu2);color:var(--gu)}.chip.li{background:var(--li2);color:var(--li)}.chip.ac{background:var(--ac2);color:var(--ac)}
 .cod{font-family:var(--mono);font-size:12px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--ac2);color:var(--ac);white-space:nowrap}
@@ -70,7 +70,7 @@ label.lb{display:block;font-size:11.5px;color:var(--mu);margin:0 0 4px 2px}
 .alert.li{background:var(--li2);color:#ff8a8a;border:1px solid #ef444455}
 .alert.pe{background:var(--pe2);color:var(--pe);border:1px solid #f59e0b55}
 .alert.ok{background:var(--ok2);color:var(--ok);border:1px solid #22c55e55}
-.alert.ac{background:var(--ac2);color:var(--ac);border:1px solid #e9b94955}
+.alert.ac{background:var(--ac2);color:var(--ac);border:1px solid #ffffff33}
 .err{color:var(--li);font-size:12.5px;min-height:16px;margin-top:6px}
 .prev{background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:9px 11px;font-size:12.5px;margin-top:8px;display:flex;gap:14px;flex-wrap:wrap}
 .prev b{font-family:var(--mono)}
@@ -79,8 +79,8 @@ label.lb{display:block;font-size:11.5px;color:var(--mu);margin:0 0 4px 2px}
 .tile .l{font-size:10.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px}
 .tile .v{font:700 18px var(--mono);margin-top:3px}
 .tile .s{font-size:11.5px;color:var(--mu);margin-top:2px}
-.banner{position:sticky;top:8px;z-index:50;background:var(--ac);color:#231800;border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:700}
-.banner .b{background:#231800;color:var(--ac);border-color:#231800}
+.banner{position:sticky;top:8px;z-index:50;background:var(--ac);color:#0e0e10;border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:700}
+.banner .b{background:#0e0e10;color:var(--ac);border-color:#0e0e10}
 .ic{background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer}
 .ic:hover,.ic.on{border-color:var(--ac)}
 .ic .t{font-weight:700;font-size:15px}
@@ -169,7 +169,7 @@ header .nube{flex-shrink:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 </head>
 <body>
 <div id="login" hidden><div class="bx">
-  <div class="logo">📊</div>
+  <div class="logo"><img src="iconos/icono-192.png" alt="Distrito YF" style="width:100%;height:100%;border-radius:inherit;display:block"></div>
   <h2>Distrito YF <span>Gestión</span></h2>
   <input id="lg-email" type="email" autocomplete="username" placeholder="Mail">
   <input id="lg-pass" type="password" autocomplete="current-password" placeholder="Contraseña" onkeydown="if(event.key==='Enter')entrar()">
@@ -194,7 +194,7 @@ header .nube{flex-shrink:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 
 <div id="app" hidden>
 <header>
-  <div class="logo">📊</div>
+  <div class="logo"><img src="iconos/icono-192.png" alt="Distrito YF" style="width:100%;height:100%;border-radius:inherit;display:block"></div>
   <h1>Distrito YF <span>Gestión</span></h1>
   <span id="nube-estado" class="nube">☁️</span>
   <a class="b sm pedidos" href="./" title="Ir a Distrito YF Pedidos">🛍️<span class="tx"> Pedidos</span></a>

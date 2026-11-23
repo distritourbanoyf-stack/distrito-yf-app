@@ -8,7 +8,7 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&display=swap');
 :root{
   --bg:#0e0e10;--s1:#18181b;--s2:#222226;--s3:#2b2b30;--bd:#313137;--tx:#f2f2f3;--mu:#8d8d96;
-  --ac:#ff3366;--ac2:#ff336622;
+  --ac:#f2f2f2;--ac2:#ffffff1c;
   --ok:#22c55e;--ok2:#22c55e22;--pe:#f59e0b;--pe2:#f59e0b22;--gu:#a78bfa;--gu2:#a78bfa22;--li:#ef4444;--li2:#ef444422;
   --wa:#25d366;
   --mono:'DM Mono',ui-monospace,Menlo,monospace;--sans:'DM Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
@@ -18,7 +18,7 @@ html{-webkit-text-size-adjust:100%}
 body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:14px;min-height:100vh;padding:16px 16px 90px;max-width:980px;margin:0 auto;overflow-x:hidden}
 [hidden]{display:none!important}
 header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.logo{width:34px;height:34px;border-radius:10px;background:var(--ac);display:flex;align-items:center;justify-content:center;font-size:17px}
+.logo{width:34px;height:34px;border-radius:10px;background:#0e0e10;border:1px solid var(--bd);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:17px}
 h1{font-size:19px;font-weight:800;letter-spacing:-.3px}h1 span{color:var(--ac)}
 .tabs{display:flex;gap:4px;background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:4px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
@@ -46,7 +46,7 @@ label.lb{display:block;font-size:11.5px;color:var(--mu);margin:0 0 4px 2px}
 .b.sm{padding:6px 10px;font-size:12.5px;border-radius:8px}
 .b.lg{padding:13px 18px;font-size:16px;border-radius:12px}
 .b.blk{width:100%}
-.b.pri{background:var(--ac);border-color:var(--ac);color:#fff}
+.b.pri{background:var(--ac);border-color:var(--ac);color:#0e0e10}
 .b.ok{background:var(--ok);border-color:var(--ok);color:#052e14}
 .b.wa{background:var(--wa);border-color:var(--wa);color:#04260f}
 .b.dan{background:transparent;color:var(--li);border-color:#ef444466}
@@ -60,11 +60,11 @@ label.lb{display:block;font-size:11.5px;color:var(--mu);margin:0 0 4px 2px}
 .ptab{border:1px solid var(--bd);background:var(--s2);color:var(--mu);border-radius:999px;padding:6px 11px;font:600 13px var(--sans);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .ptab .n{font:700 11px var(--mono);background:var(--s3);color:var(--tx);border-radius:8px;padding:1px 6px}
 .ptab.on{background:var(--ac2);border-color:var(--ac);color:var(--tx)}
-.ptab.on .n{background:var(--ac);color:#fff}
+.ptab.on .n{background:var(--ac);color:#0e0e10}
 .ptab.vac{opacity:.45}
 .b.seg.on{background:var(--ac2);border-color:var(--ac);color:var(--tx)}
 .b:disabled{opacity:.45;cursor:default}
-.bdg{display:inline-block;background:var(--ac);color:#fff;font:700 10.5px var(--sans);padding:2px 7px;border-radius:10px;vertical-align:middle}
+.bdg{display:inline-block;background:var(--ac);color:#0e0e10;font:700 10.5px var(--sans);padding:2px 7px;border-radius:10px;vertical-align:middle}
 .bdg.red{background:var(--li)}
 .chip{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--s3);color:var(--mu);white-space:nowrap}
 .chip.ok{background:var(--ok2);color:var(--ok)}.chip.pe{background:var(--pe2);color:var(--pe)}.chip.gu{background:var(--gu2);color:var(--gu)}.chip.li{background:var(--li2);color:var(--li)}
@@ -281,7 +281,7 @@ table.t td{padding:7px 6px;border-bottom:1px solid var(--bd);vertical-align:top}
 <div id="bloqueo"><div class="bx" id="bloqueo-bx"></div></div>
 
 <div id="login" hidden><div class="bx">
-  <div class="logo">🛍️</div>
+  <div class="logo"><img src="iconos/icono-192.png" alt="Distrito YF" style="width:100%;height:100%;border-radius:inherit;display:block"></div>
   <h2>Distrito YF <span>Pedidos</span></h2>
   <input id="lg-email" type="email" autocomplete="username" placeholder="Mail">
   <input id="lg-pass" type="password" autocomplete="current-password" placeholder="Contraseña" onkeydown="if(event.key==='Enter')entrar()">
@@ -290,7 +290,7 @@ table.t td{padding:7px 6px;border-bottom:1px solid var(--bd);vertical-align:top}
 </div></div>
 <div id="carga" hidden><div style="font-size:34px">☁️</div><div>Trayendo tus datos…</div></div>
 <header>
-  <div class="logo">🛍️</div>
+  <div class="logo"><img src="iconos/icono-192.png" alt="Distrito YF" style="width:100%;height:100%;border-radius:inherit;display:block"></div>
   <h1>Distrito YF <span>Pedidos</span></h1>
   <span id="nube-estado" class="nube">☁️</span>
   <a class="b sm" href="gestion.html" title="Ir a Distrito YF Gestión" style="text-decoration:none">📊<span class="hide-m"> Gestión</span></a>
@@ -298,12 +298,12 @@ table.t td{padding:7px 6px;border-bottom:1px solid var(--bd);vertical-align:top}
 
 <div id="avisos"></div>
 <nav class="tabs" id="tabs">
+  <button class="tab on" data-act="tab" data-t="live">🛒 Ventas</button>
   <button class="tab" data-act="tab" data-t="despacho">🚚 Despacho<span id="bdg-desp"></span></button>
-  <button class="tab on" data-act="tab" data-t="live">📦 Live</button>
-  <button class="tab" data-act="tab" data-t="mabel">🤖 Mabel<span id="bdg-mabel"></span></button>
+  <button class="tab" data-act="tab" data-t="mabel">💬 WhatsApp<span id="bdg-mabel"></span></button>
   <button class="tab" data-act="tab" data-t="clientes">👥 Clientes</button>
   <button class="tab" data-act="tab" data-t="guardados">📦 Guardados<span id="bdg-guard"></span></button>
-  <button class="tab" data-act="tab" data-t="mostrador">🏪 Mostrador</button>
+  <button class="tab" data-act="tab" data-t="mostrador">🤝 En mano</button>
   <button class="tab" data-act="tab" data-t="config">⚙️ Config</button>
 </nav>
 
@@ -338,7 +338,7 @@ table.t td{padding:7px 6px;border-bottom:1px solid var(--bd);vertical-align:top}
   </div>
 
   <div class="list-h">
-    <span class="t">Pedidos del live <span class="bdg" id="bdg-ped">0</span></span>
+    <span class="t"><span id="ped-tit">Pedidos del live</span> <span class="bdg" id="bdg-ped">0</span></span>
   </div>
   <div class="toolbar">
     <button class="b sm" data-act="etiquetasLive">🖨️ Etiquetas</button>
@@ -360,7 +360,7 @@ table.t td{padding:7px 6px;border-bottom:1px solid var(--bd);vertical-align:top}
     <div id="mbt-conv-l"></div>
   </div>
   <div id="mbt-aj" hidden><div id="mbt-pausa"></div></div>
-  <div id="mbt-madre" hidden><div class="card"><div class="card-t">🧠 Chat madre</div><p class="small muted">Todavía no está. La idea: escribirle a Mabel por WhatsApp para preguntarle cosas y darle instrucciones, y ver ese chat acá.</p></div></div>
+  <div id="mbt-madre" hidden><div class="card"><div class="card-t">🧠 Chat madre</div><p class="small muted">Todavía no está. La idea: escribirle al agente por WhatsApp para preguntarle cosas y darle instrucciones, y ver ese chat acá.</p></div></div>
 </section>
 <section class="panel" id="p-clientes">
   <div class="card">
@@ -477,7 +477,7 @@ table.t td{padding:7px 6px;border-bottom:1px solid var(--bd);vertical-align:top}
       <div><label class="lb">Ciudad</label><input id="cf-ng-ciudad"></div>
       <div><label class="lb">Extra que cobra el cadete ($)</label><input id="cf-extra" type="number" inputmode="numeric"></div>
     </div>
-    <label class="lb mt">Cuentas de cobro (una por renglón · Mabel usa la misma lista)</label>
+    <label class="lb mt">Cuentas de cobro (una por renglón · el agente usa la misma lista)</label>
     <textarea id="cf-cuentas" rows="6"></textarea>
     <button class="b pri blk mt" data-act="guardarConfig">Guardar configuración</button>
   </div>
@@ -700,7 +700,7 @@ function stats() {
 const ST0 = { ok: 0, mal: 0, deudas: [], guardados: [], pendientes: [] };
 function histHTML(h) {
   h = h || ST0;
-  if (!h.ok && !h.mal) return '<span class="chip ac">🆕 nueva</span>';
+  if (!h.ok && !h.mal) return '<span class="chip ac">🆕 nuevo</span>';
   return `<span class="hist">(<span class="v">✅ ${h.ok}</span> | <span class="r">❌ ${h.mal}</span>)</span>`;
 }
 
@@ -1167,7 +1167,7 @@ function renderPedidos() {
   if (q) ps = ps.filter(p => { const c = cliById(p.clienteId) || {}; return norm(c.nombre + ' ' + (c.ref || '')).includes(q) || (c.alias || []).some(a => norm(a).includes(q)) || String(p.num) === q.replace('#', '') || p.codigo.includes(q); });
   const pend = live.pedidos.filter(p => p.estado === 'pendiente').length;
   $('#bdg-ped').textContent = live.pedidos.length + (pend && pend < live.pedidos.length ? ' · ' + pend + ' pend.' : '');
-  $('#lista-pedidos').innerHTML = (q && UI.pedTab !== 'todos' && ps.length ? '<div class="small muted mb">🔎 Buscando en todas las pestañas</div>' : '') + (ps.length ? ps.map(p => cardPedido(p, live, m)).join('') : `<div class="empty">${q ? 'Sin resultados' : UI.pedTab !== 'todos' && live.pedidos.length ? 'No hay pedidos en esta pestaña' : live.archivado ? `📦 Live archivado: ${live.resumen.pedidos} pedidos cerrados (detalle en el backup descargado ese día)` : 'Todavía no hay pedidos en este live'}</div>`);
+  $('#lista-pedidos').innerHTML = (q && UI.pedTab !== 'todos' && ps.length ? '<div class="small muted mb">🔎 Buscando en todas las pestañas</div>' : '') + (ps.length ? ps.map(p => cardPedido(p, live, m)).join('') : `<div class="empty">${q ? 'Sin resultados' : UI.pedTab !== 'todos' && live.pedidos.length ? 'No hay pedidos en esta pestaña' : live.archivado ? `📦 Live archivado: ${live.resumen.pedidos} pedidos cerrados (detalle en el backup descargado ese día)` : (typeof esVentas === 'function' && esVentas(live) ? 'Todavía no hay pedidos este mes' : 'Todavía no hay pedidos en este live')}</div>`);
 }
 function cardPedido(p, live, m) {
   const c = cliById(p.clienteId) || { id: '', nombre: '(sin cliente)', alias: [], tel: '' };
@@ -1253,7 +1253,7 @@ function cuerpoPedido(p, c, live, t, h) {
     ${UI.preview.has(id) ? `<div class="msg">${esc(mensajePedido(p))}</div>` : ''}
   </div>`;
 }
-/** Datos de entrega (agencia / cadetería) que se cargan en la ficha de el cliente. */
+/** Datos de entrega (agencia / cadetería) que se cargan en la ficha del cliente. */
 function entregaDetHTML(p, c, ent, px) {
   const id = p ? p.id : '';
   if (ent === 'agencia') return `<div class="box mt"><div class="grid2">
@@ -1825,7 +1825,7 @@ function guardarConfigUI() {
   if (extra !== '' && num(extra) !== extraCobroCadete()) patch.extraCobroCadete = Math.max(0, num(extra));
   const ctas = [...new Set($('#cf-cuentas').value.split('\n').map(x => x.trim()).filter(Boolean))];
   if (ctas.length && ctas.join('\n') !== cuentasPago().join('\n')) {
-    if (!confirm('¿Cambiar las cuentas de cobro?\n\n' + ctas.join(' · ') + '\n\nMabel también usa esta lista.')) return;
+    if (!confirm('¿Cambiar las cuentas de cobro?\n\n' + ctas.join(' · ') + '\n\nEl agente también usa esta lista.')) return;
     patch.cuentasPago = ctas;
   }
   saveConfig(patch);
@@ -2192,5 +2192,6 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
 <script src="mabel.js"></script>
 <script src="mabeltab.js"></script>
 <script src="stock.js"></script>
+<script src="ventas.js"></script>
 </body>
 </html>

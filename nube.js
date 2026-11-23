@@ -84,7 +84,7 @@ const COL = {
     lista: () => DB.conversaciones || [],
     fila: c => ({ id: c.id, datos: c })
   },
-  // Bandeja de la pestaña Mabel: las filas las crea Mabel; la app solo marca resuelto o cambia la categoría
+  // Bandeja de la pestaña WhatsApp: las filas las crea el agente; la app solo marca resuelto o cambia la categoría
   derivados: {
     lista: () => DB.derivados || [],
     fila: d => ({ id: d.id, datos: d })
@@ -386,7 +386,7 @@ function pintarNube() {
   el.style.cursor = ap ? 'pointer' : '';
   el.onclick = ap ? verApartadas : null;
 }
-const NOMBRE_COL = { clientas: 'Cliente', lives: 'Live', pedidos: 'Pedido', stock: 'Prenda (stock)', movimientos: 'Movimiento de stock', pagos: 'Pago', paquetes: 'Paquete', config: 'Configuración', modelos: 'Modelo', promos: 'Promo', compras: 'Compra', mostrador: 'Mostrador', cobros: 'Cobro', conversaciones: 'Conversación', derivados: 'Pendiente de Mabel' };
+const NOMBRE_COL = { clientas: 'Cliente', lives: 'Live', pedidos: 'Pedido', stock: 'Prenda (stock)', movimientos: 'Movimiento de stock', pagos: 'Pago', paquetes: 'Paquete', config: 'Configuración', modelos: 'Modelo', promos: 'Promo', compras: 'Compra', mostrador: 'Mostrador', cobros: 'Cobro', conversaciones: 'Conversación', derivados: 'Pendiente del agente' };
 function descApartada(x) {
   const d = (x.fila && x.fila.datos) || x.fila || {};
   const que = d.codigo ? ' ' + d.codigo : d.num ? ' #' + d.num : d.nombre ? ' ' + d.nombre : x.fila && x.fila.motivo ? ' (' + x.fila.motivo + ' ' + x.fila.cantidad + ')' : '';
