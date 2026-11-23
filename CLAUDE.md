@@ -16,7 +16,7 @@ Es una copia del molde de la app de otra tienda, con **cuentas, base y datos pro
 
 ## Reglas que no se rompen
 1. **El repo es público.** Nunca claves, contraseñas, números de cuenta, RUT, teléfonos personales ni datos de clientes. En `negocio.js` las cuentas de cobro van solo por nombre (Prex, Mercado Pago, Efectivo); teléfono y RUT se cargan en ⚙️ Config (quedan en la base).
-2. **Base:** Supabase `distrito-yf` (`bhtwuunoxkwesnjombuw`, São Paulo). Es la ÚNICA base de esta app. Nunca usar ni nombrar la base de la otra tienda. Las migraciones aplicadas: `base_esquema` y `base_stock` (copias en `supabase/migraciones/`; el esquema completo está en el Project como `base-esquema.txt`).
+2. **Base:** Supabase `distrito-yf` (`bhtwuunoxkwesnjombuw`, São Paulo). Es la ÚNICA base de esta app. Nunca usar ni nombrar la base de la otra tienda. Las migraciones aplicadas: `base_esquema`, `base_stock` y `permisos_tablas_app` (proyectos nuevos de Supabase no dan permisos de tabla por defecto: toda tabla nueva necesita su `grant`) (copias en `supabase/migraciones/`; el esquema completo está en el Project como `base-esquema.txt`).
 3. Todo cambio se prueba antes de publicar y queda en GitHub para poder volver atrás.
 
 ## Cómo se publica la app
