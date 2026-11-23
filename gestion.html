@@ -63,6 +63,13 @@ label.lb{display:block;font-size:11.5px;color:var(--mu);margin:0 0 4px 2px}
 .b:disabled{opacity:.45;cursor:default}
 .bdg{display:inline-block;background:var(--ac);color:#0e0e10;font:700 10.5px var(--sans);padding:2px 7px;border-radius:10px;vertical-align:middle}
 .chip{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--s3);color:var(--mu);white-space:nowrap}
+.fotos-g{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.fotos-g .ft{position:relative;width:86px;height:108px;border-radius:10px;overflow:hidden;border:1px solid var(--bd);background:var(--s3);touch-action:none;user-select:none;-webkit-user-select:none}
+.fotos-g .ft img{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.fotos-g .ft .px{position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:7px;background:rgba(0,0,0,.7);color:#fff;border:0;font-size:13px;line-height:24px;text-align:center;padding:0}
+.fotos-g .ft .por{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);color:#fff;font-size:10.5px;font-weight:700;text-align:center;padding:2px 0}
+.fotos-g .ft.drag{opacity:.35}.fotos-g .ft.sobre{outline:2px solid var(--ac)}
+.fotos-g .ft.fantasma{position:fixed;z-index:9999;pointer-events:none;opacity:.9;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .chip.ok{background:var(--ok2);color:var(--ok)}.chip.pe{background:var(--pe2);color:var(--pe)}.chip.gu{background:var(--gu2);color:var(--gu)}.chip.li{background:var(--li2);color:var(--li)}.chip.ac{background:var(--ac2);color:var(--ac)}
 .cod{font-family:var(--mono);font-size:12px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--ac2);color:var(--ac);white-space:nowrap}
 .empty{color:var(--mu);text-align:center;padding:22px 0;font-size:13px}
@@ -588,7 +595,7 @@ function archivarSinStock(forzar) {
   const lim = Date.now() - diasArchivo() * 864e5, ult = new Map();
   const deVar = new Map(DB.stock.map(s => [s.id, s.modeloId]));
   for (const x of DB.movimientos) { const mid = deVar.get(x.stockId); if (mid && (!ult.has(mid) || String(x.fecha) > ult.get(mid))) ult.set(mid, String(x.fecha)); }
-  const enRecepcion = new Set(COMPRAS.filter(c => c.estado === 'pedida').flatMap(c => c.lineas.flatMap(l => l.modelos.map(mo => mo.mid)).filter(Boolean)));
+  const enRecepcion = new Set(COMPRAS.filter(c => c.estado === 'pedida').flatMap(c => c.lineas.flatMap(l => l.modelos.map(mo => mo.mid).concat(l.mid ? [l.mid] : []))).filter(Boolean));
   const lst = modelosActivos().filter(m => totalModelo(m) <= 0 && !enRecepcion.has(m.id) && new Date(ult.get(m.id) || m.creado || 0).getTime() < lim);
   if (!lst.length) return 0;
   mutStock(() => lst.forEach(m => { variantesDe(m.id).forEach(s => { if (+s.stock) mov(s.id, -(+s.stock), 'ajuste', 'archivado'); }); m.activo = false; m.archivado = ahoraISO(); sincronizarVariantes(m); }));
@@ -622,7 +629,7 @@ function partir(c) {
   const pub = { v: 3 };
   ['id', 'tipo', 'estado', 'nombre', 'fecha', 'creado', 'recibida'].forEach(k => { if (c[k] !== undefined && c[k] !== null) pub[k] = c[k]; });
   pub.lineas = c.lineas.map(l => ({ lid: l.lid, descripcion: l.descripcion || '', qty: +l.qty || 0, reint: +l.reint || 0,
-    ...(l.sugerido ? { sugerido: l.sugerido } : {}), ...(l.cat ? { cat: l.cat } : {}), ...(l.tt ? { tt: l.tt } : {}),
+    ...(l.sugerido ? { sugerido: l.sugerido } : {}), ...(l.cat ? { cat: l.cat } : {}), ...(l.tt ? { tt: l.tt } : {}), ...(l.mid ? { mid: l.mid } : {}),
     modelos: (l.modelos || []).map(mo => ({ k: mo.k, mid: mo.mid || null, nombre: mo.nombre || '', categoria: mo.categoria || 'Otro', tipoTalle: mo.tipoTalle || 'unico', talles: mo.talles || {}, precioVenta: num(mo.precioVenta), repos: !!mo.repos })) }));
   const priv = { blue: num(c.blue), uyu: num(c.uyu), costoImp: num(c.costoImp), l: {} };
   c.lineas.forEach(l => { const o = {}; PRIV_L.forEach(k => { if (num(l[k])) o[k] = num(l[k]); }); priv.l[l.lid] = o; });
@@ -1082,7 +1089,7 @@ function tablaLineasImp(c, ctx) {
       <td data-l="${recib ? 'Pedidas' : 'Cant.'}"><input class="in-xs" type="number" inputmode="numeric" min="0" id="lq-${id}" data-chg="lnQty" ${a} value="${+l.qty || 0}"${bloq ? ' disabled' : ''}></td>
       <td data-l="${recib ? 'Recibidas' : ''}" class="n">${recib ? `<b>${l._rec}</b> ${falt}` : ''}</td>
       ${precios}
-      <td data-l="" class="fin">${recib ? '' : `<button class="b sm dan" data-act="delLinea" ${a} title="Quitar"${bloq ? ' disabled' : ''}>✕</button>`}</td>
+      <td data-l="" class="fin">${!recib && ctx === 'h' ? (() => { const pm = l.mid && modeloById(l.mid), n = pm ? fotosDe(pm).length : 0; return `<button class="b sm${n ? ' ok' : ''}" data-act="lnFotos" ${a} title="Fotos para el catálogo (antes de que llegue)">📷${n ? ' ' + n : ''}</button> `; })() : ''}${recib ? '' : `<button class="b sm dan" data-act="delLinea" ${a} title="Quitar"${bloq ? ' disabled' : ''}>✕</button>`}</td>
     </tr>${modelos}`;
   };
   const th = bloq ? '<th class="n">Costos</th>' : '<th class="n">P. imp ARS</th><th class="n">P. real ARS</th><th class="n">Costo UYU</th><th class="n">Mín. venta</th>';
@@ -1134,6 +1141,142 @@ function renderLocal() {
   previewLocal();
 }
 /** Crea los modelos nuevos (o usa el de la reposición), sus talles y mete las unidades al stock. Devuelve lo que hay que etiquetar. */
+// ─── FOTOS Y CATÁLOGO WEB (Distrito YF) ───────────────────────
+// Las fotos van al bucket público "fotos" de Supabase (solo fotos de prendas). En el modelo se guardan las rutas (m.fotos), la primera es la portada.
+// Estados para la web: sin fotos → ✅ listo (fotos + nombre + precio) → 🌐 publicado. El catálogo muestra solo lo publicado CON stock.
+const fotoUrl = p => /^https?:/.test(p) ? p : NUBE_URL + '/storage/v1/object/public/fotos/' + String(p).split('/').map(encodeURIComponent).join('/');
+const fotosDe = m => Array.isArray(m && m.fotos) ? m.fotos : [];
+const listoWeb = m => fotosDe(m).length > 0 && !!String(m.nombre || '').trim() && num(m.precioVenta) > 0;
+function estadoWeb(m) {
+  if (m.publicado && listoWeb(m)) return { k: 'pub', txt: '🌐 publicado', cls: 'ok' };
+  if (!fotosDe(m).length) return { k: 'sin', txt: '📷 sin fotos', cls: '' };
+  if (!listoWeb(m)) return { k: 'falta', txt: 'falta ' + (!num(m.precioVenta) ? 'precio' : 'nombre'), cls: 'pe' };
+  return { k: 'listo', txt: '✅ listo', cls: 'ac' };
+}
+/** Achica la foto en el equipo (lado mayor 1400 px, JPG): carga rápido en el catálogo y ocupa poco. */
+async function achicarFoto(file, max = 1400, calidad = 0.82) {
+  let src;
+  try { src = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch (e) { src = await new Promise((ok, mal) => { const im = new Image(); im.onload = () => ok(im); im.onerror = mal; im.src = URL.createObjectURL(file); }); }
+  const w0 = src.width || src.naturalWidth, h0 = src.height || src.naturalHeight, k = Math.min(1, max / Math.max(w0, h0));
+  const cv = document.createElement('canvas'); cv.width = Math.round(w0 * k); cv.height = Math.round(h0 * k);
+  cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
+  return await new Promise(ok => cv.toBlob(ok, 'image/jpeg', calidad));
+}
+let _subiendo = false;
+async function subirFotos(mid, files) {
+  const m = modeloById(mid); if (!m || !files || !files.length) return;
+  if (!NUBE.sb || !navigator.onLine) return toast('Para subir fotos hace falta internet');
+  if (_subiendo) return toast('Esperá: todavía se están subiendo fotos');
+  _subiendo = true;
+  const nuevas = []; let fallas = 0, i = 0;
+  try {
+    for (const f of files) {
+      i++; toast(`📷 Subiendo ${i} de ${files.length}…`, 60000);
+      try {
+        const blob = await achicarFoto(f);
+        const ruta = `m/${m.id}/${uid('f')}.jpg`;
+        const { error } = await NUBE.sb.storage.from('fotos').upload(ruta, blob, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false });
+        if (error) throw error;
+        nuevas.push(ruta);
+      } catch (e) { console.error('Foto', e); fallas++; }
+    }
+  } finally { _subiendo = false; }
+  if (nuevas.length) mutStock(() => { m.fotos = fotosDe(m).concat(nuevas); });
+  toast(nuevas.length ? `✓ ${nuevas.length} foto(s) subida(s)${fallas ? ` · ${fallas} no se pudo` : ''}` : 'No se pudo subir ninguna foto', 3500);
+  render();
+}
+function elegirFotos(mid) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+  inp.onchange = () => subirFotos(mid, [...(inp.files || [])]);
+  inp.click();
+}
+function borrarFoto(mid, i) {
+  const m = modeloById(mid); if (!m) return;
+  const fs = fotosDe(m).slice(), ruta = fs[i]; if (ruta == null) return;
+  if (!confirm('¿Quitar esta foto?')) return;
+  fs.splice(i, 1);
+  mutStock(() => { m.fotos = fs; if (!fs.length) m.publicado = false; });
+  if (!/^https?:/.test(ruta) && NUBE.sb) NUBE.sb.storage.from('fotos').remove([ruta]).catch(() => {});
+  render();
+}
+function moverFoto(mid, de, a) {
+  const m = modeloById(mid); if (!m || de === a) return;
+  const fs = fotosDe(m).slice(); const [x] = fs.splice(de, 1); fs.splice(a, 0, x);
+  mutStock(() => { m.fotos = fs; }); render();
+}
+function publicarModelo(mid, si) {
+  const m = modeloById(mid); if (!m) return;
+  if (si && !listoWeb(m)) return toast('Para publicar hace falta: al menos 1 foto, nombre y precio de venta', 3500);
+  mutStock(() => { m.publicado = !!si; });
+  toast(si ? (totalModelo(m) > 0 ? '🌐 Publicado: ya aparece en el catálogo' : '🌐 Publicado: aparece en el catálogo cuando tenga stock') : 'Despublicado: ya no aparece en el catálogo', 3500);
+  render();
+}
+function bloqueFotos(m) {
+  const id = esc(m.id), fs = fotosDe(m), e = estadoWeb(m);
+  return `<div class="sec-t">📷 Fotos y catálogo web <span class="chip ${e.cls}">${e.txt}</span></div>
+    <div class="small muted">Sacá fotos o elegilas de la galería (podés elegir varias). Para ordenar, arrastralas: la primera es la portada.</div>
+    <div class="fotos-g" data-fotos="${id}">${fs.map((p, i) => `<div class="ft" data-fi="${i}"><img src="${esc(fotoUrl(p))}" alt="" loading="lazy"><button class="px" data-act="fotoQuitar" data-id="${id}" data-i="${i}" title="Quitar">✕</button>${i ? '' : '<span class="por">PORTADA</span>'}</div>`).join('')}</div>
+    <div class="row mt"><button class="b sm" data-act="fotoAgregar" data-id="${id}">📷 ${fs.length ? 'Agregar fotos' : 'Fotos'}</button>
+      <span class="grow"></span>
+      ${m.publicado ? `<button class="b sm" data-act="webPub" data-id="${id}" data-si="0">Despublicar</button>` : `<button class="b sm ok" data-act="webPub" data-id="${id}" data-si="1"${listoWeb(m) ? '' : ' disabled title="Falta foto, nombre o precio"'}>🌐 Publicar</button>`}</div>
+    ${m.publicado && listoWeb(m) && totalModelo(m) <= 0 ? '<div class="small muted mt">Publicado, pero sin stock: aparece en el catálogo cuando entre mercadería.</div>' : ''}`;
+}
+// Ordenar arrastrando (mouse o dedo): se agarra la foto, se suelta sobre otra y toma su lugar.
+(function () {
+  let st = null;
+  const fin = () => { if (!st) return; st.el.classList.remove('drag'); st.f && st.f.remove(); document.querySelectorAll('.ft.sobre').forEach(x => x.classList.remove('sobre')); st = null; };
+  document.addEventListener('pointerdown', e => {
+    const ft = e.target.closest('.fotos-g .ft'); if (!ft || e.target.closest('.px')) return;
+    st = { el: ft, g: ft.parentElement, de: +ft.dataset.fi, x0: e.clientX, y0: e.clientY, mov: false, f: null, sobre: null };
+  });
+  document.addEventListener('pointermove', e => {
+    if (!st) return;
+    if (!st.mov) {
+      if (Math.hypot(e.clientX - st.x0, e.clientY - st.y0) < 8) return;
+      st.mov = true; st.el.classList.add('drag');
+      const r = st.el.getBoundingClientRect(); st.f = st.el.cloneNode(true); st.f.classList.remove('drag'); st.f.classList.add('fantasma');
+      st.f.style.width = r.width + 'px'; st.f.style.height = r.height + 'px'; st.dx = e.clientX - r.left; st.dy = e.clientY - r.top; document.body.appendChild(st.f);
+    }
+    e.preventDefault();
+    st.f.style.left = (e.clientX - st.dx) + 'px'; st.f.style.top = (e.clientY - st.dy) + 'px';
+    const bajo = document.elementFromPoint(e.clientX, e.clientY), ft = bajo && bajo.closest('.ft');
+    document.querySelectorAll('.ft.sobre').forEach(x => x.classList.remove('sobre'));
+    st.sobre = ft && ft.parentElement === st.g && ft !== st.el ? ft : null;
+    if (st.sobre) st.sobre.classList.add('sobre');
+  }, { passive: false });
+  document.addEventListener('pointerup', () => {
+    if (st && st.mov && st.sobre) { const mid = st.g.dataset.fotos, de = st.de, a = +st.sobre.dataset.fi; fin(); moverFoto(mid, de, a); return; }
+    fin();
+  });
+  document.addEventListener('pointercancel', fin);
+})();
+/** Modelo creado antes de que llegue la mercadería (para cargarle fotos): se arma con la línea de la compra pedida. */
+function modeloDeLinea(c, l) {
+  let m = l.mid && modeloById(l.mid);
+  if (!m) {
+    mutStock(() => {
+      m = crearModelo({ nombre: l.sugerido || l.descripcion, categoria: l.cat || 'Otro', tipoTalle: l.tt || 'letras', precioVenta: 0 });
+      m.porLlegar = c.id;
+      const ali = String(l.descripcion || '').trim(); if (ali && ali.toLowerCase() !== m.nombre.toLowerCase()) m.alias = [ali];
+    });
+    l.mid = m.id; saveCompras();
+  }
+  return m;
+}
+function fotosDeLinea(d) {
+  const c = compraById(d.cid), l = lineaDe(c, d.lid); if (!l || c.estado !== 'pedida') return;
+  const m = modeloDeLinea(c, l);
+  UI.stk.q = ''; UI.stk.f = 'todos'; UI.stk.cat = ''; UI.stk.ab = m.id;
+  const b = document.querySelector('[data-act="tab"][data-t="stock"]'); if (b) b.click(); else render();
+  setTimeout(() => { const x = document.querySelector('[data-act="stkAbrir"][data-id="' + CSS.escape(m.id) + '"]'); if (x) x.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 120);
+}
+/** Datos del modelo pre-creado para la primera fila de la recepción. */
+function premodelo(l) {
+  const m = l.mid && modeloById(l.mid); if (!m) return {};
+  return { mid: m.id, nombre: m.nombre, categoria: m.categoria, tipoTalle: m.tipoTalle || l.tt || 'letras', precioVenta: num(m.precioVenta) };
+}
 function entrarModelos(c, lineas) {
   const etq = [];
   mutStock(() => {
@@ -1142,6 +1285,7 @@ function entrarModelos(c, lineas) {
       let m = mo.mid && modeloById(mo.mid);
       if (!m) { m = crearModelo(mo); mo.mid = m.id; mo.repos = false; const ali = String(l.descripcion || '').trim(); if (ali && ali.toLowerCase() !== m.nombre.toLowerCase()) m.alias = [ali]; }   // el nombre interno queda como alias (no lo ve el cliente)
       else {
+        if (m.porLlegar) { const nn = String(mo.nombre || '').trim(); if (nn) m.nombre = nn; if (mo.categoria) m.categoria = mo.categoria; if (mo.tipoTalle) m.tipoTalle = mo.tipoTalle; delete m.porLlegar; }
         if (num(mo.precioVenta)) m.precioVenta = num(mo.precioVenta);
         if (m.activo === false || !(+m.num)) activar(m);
         if (mo.tipoTalle && m.tipoTalle !== mo.tipoTalle && mo.tipoTalle !== 'unico') m.tipoTalle = mo.tipoTalle;
@@ -1253,7 +1397,7 @@ function detalleCompra(c) {
 }
 /** Pantalla de recepción: cada línea pedida se abre en modelos (colores) con sus talles. */
 function recepcionHTML(c) {
-  c.lineas.forEach(l => { if (!l.modelos.length) l.modelos.push(modeloVacio(l)); });
+  c.lineas.forEach(l => { if (!l.modelos.length) l.modelos.push(modeloVacio(l, premodelo(l))); });
   const t = calcCompra(c, true), id = esc(c.id);
   const lineas = c.lineas.map(l => {
     const rec = unidadesLinea(l), falt = Math.max(0, (+l.qty || 0) - rec - (+l.reint || 0));
@@ -1265,7 +1409,7 @@ function recepcionHTML(c) {
         return `<div class="rcm">
           <div class="row"><input class="grow" list="dl-modelos" id="rn-${ix}" data-chg="rcNom" ${a} value="${esc(mo.nombre)}" placeholder="Nombre con el color (ej: ${esc(l.descripcion)} blanca)">
             <button class="b sm dan" data-act="rcDelMo" ${a} title="Quitar este color">✕</button></div>
-          ${m ? `<div class="mt"><span class="chip ac">🔁 Reposición de <b class="mono">${esc(numTxt(m))}</b> · quedan ${totalModelo(m)}</span> <button class="b sm gh" data-act="rcSinRepos" ${a}>No es reposición</button></div>` : ''}
+          ${m && m.porLlegar ? `<div class="mt"><span class="chip ok">📷 <b class="mono">${esc(numTxt(m))}</b> · ${fotosDe(m).length} foto(s)${m.publicado || listoWeb(m) ? ' · se publica al confirmar' : ''}</span></div>` : m ? `<div class="mt"><span class="chip ac">🔁 Reposición de <b class="mono">${esc(numTxt(m))}</b> · quedan ${totalModelo(m)}</span> <button class="b sm gh" data-act="rcSinRepos" ${a}>No es reposición</button></div>` : ''}
           <div class="grid3 mt">
             <div><label class="lb">Categoría</label><select id="rc-${ix}" data-chg="rcCat" ${a}>${optsCat(mo.categoria)}</select></div>
             <div><label class="lb">Talles</label><select id="rt-${ix}" data-chg="rcTipo" ${a}>${optsTipo(mo.tipoTalle)}</select></div>
@@ -1295,7 +1439,7 @@ function rcNombre(d, el) {
     Object.assign(mo, { mid: m.id, repos: true, nombre: m.nombre, categoria: m.categoria, tipoTalle: m.tipoTalle || 'unico', precioVenta: num(mo.precioVenta) || num(m.precioVenta) });
   } else {
     mo.nombre = String(el.value || '').replace(/^#?\d+\s*·\s*/, '').replace(/\s*\(antes [^)]*\)$/, '').trim();
-    if (mo.mid && (!m || m.id !== mo.mid)) { mo.mid = null; mo.repos = false; }
+    if (mo.mid && (!m || m.id !== mo.mid) && !(modeloById(mo.mid) || {}).porLlegar) { mo.mid = null; mo.repos = false; }
   }
   saveCompras(); render();
 }
@@ -1310,12 +1454,16 @@ async function confirmarRecepcion(cid) {
   if (!confirm(`Confirmar recepción de "${c.nombre}":\n\n• Recibidas: ${t.recU} de ${t.pedU} unidades\n• Faltantes: ${t.faltU}${t.faltU ? ' (' + fmt(t.faltUYU) + ', se reparte en el costo)' : ''}${sinPv ? `\n• ${sinPv} modelo(s) sin precio de venta (la etiqueta sale sin precio)` : ''}\n\nLo recibido entra al stock. ¿Seguir?`)) return;
   c.lineas.forEach(l => { l.modelos = l.modelos.filter(mo => unidadesDe(mo) > 0); });
   const etq = entrarModelos(c, c.lineas);
+  // Distrito: lo que ya tiene fotos, nombre y precio se publica solo en el catálogo
+  const aPublicar = [...new Set(c.lineas.flatMap(l => l.modelos.map(mo => mo.mid)).filter(Boolean))].map(modeloById).filter(m => m && !m.publicado && listoWeb(m));
+  if (aPublicar.length) mutStock(() => aPublicar.forEach(m => { m.publicado = true; }));
+  c.lineas.forEach(l => { delete l.mid; });
   c.estado = 'recibida'; c.recibida = hoyISO();
   UI.recibir = null;
   await saveCompras();
   pintarDatalist();
   render();
-  abrirEtiquetas(etq, `✓ Recibida · ${t.recU} unidades entraron al stock${t.faltU ? ` · ⚠️ ${t.faltU} faltantes` : ''}`);
+  abrirEtiquetas(etq, `✓ Recibida · ${t.recU} unidades entraron al stock${t.faltU ? ` · ⚠️ ${t.faltU} faltantes` : ''}${aPublicar.length ? ` · 🌐 ${aPublicar.length} publicado(s) en el catálogo` : ''}`);
 }
 /** Faltante que llegó después: entra al stock en el modelo/talle que se elija. */
 function llegoDespues(d) {
@@ -1598,25 +1746,28 @@ function renderStock() {
     ['Valor a precio de venta', fmt(valVenta), 'c-ac', ''], ['Valor a costo', valCosto ? fmt(valCosto) : '—', '', sinCosto ? `${sinCosto} u. sin costo cargado` : '']
   ].map(([l, v, cl, s]) => tile(l, v, cl, s)).join('');
   const lib = DB.modelos.length - act.length;   // archivados
-  $('#st-f').innerHTML = [['todos', 'Todos'], ['cero', `Sin stock (${cero})`], ['poco', `Poco stock (${poco})`], ['agot', `Talle agotado (${agot})`], ['liberados', `📦 Archivados (${lib})`]]
+  const sinFoto = act.filter(m => tot.get(m.id) > 0 && !fotosDe(m).length).length;
+  $('#st-f').innerHTML = [['todos', 'Todos'], ['sinfoto', `📷 Con stock sin fotos (${sinFoto})`], ['cero', `Sin stock (${cero})`], ['poco', `Poco stock (${poco})`], ['agot', `Talle agotado (${agot})`], ['liberados', `📦 Archivados (${lib})`]]
     .map(([k, t]) => `<button class="b sm seg${S.f === k ? ' on' : ''}" data-act="stkF" data-f="${k}">${t}</button>`).join('');
   let L = S.f === 'liberados' ? DB.modelos.filter(m => m.activo === false) : q ? DB.modelos : act;   // al buscar aparecen también los archivados
   const T = m => tot.has(m.id) ? tot.get(m.id) : totalModelo(m);
   if (S.f === 'cero') L = L.filter(m => !T(m));
   if (S.f === 'poco') L = L.filter(m => T(m) > 0 && T(m) <= 2);
   if (S.f === 'agot') L = L.filter(m => agotados(m).length);
+  if (S.f === 'sinfoto') L = L.filter(m => T(m) > 0 && !fotosDe(m).length);
   if (S.cat) L = L.filter(m => m.categoria === S.cat);
   if (q) L = L.filter(m => String(m.num) === q || norm(m.nombre).includes(q) || (m.alias || []).some(a => norm(a) === q) || variantesDe(m.id).some(s => norm(s.codigo) === q));
   L = [...L].sort((a, b) => (a.activo === false) - (b.activo === false) || b.num - a.num);
   const hay = L.length;
   L = L.slice(0, UI.stk.max || 80);
-  if (!hay) { $('#st-lista').innerHTML = '<div class="empty">Sin artículos</div>'; return; }
-  $('#st-lista').innerHTML = `<table class="rt"><thead><tr><th>N°</th><th>Prenda</th><th>Talles</th><th class="n">Total</th><th class="n">P. venta</th><th></th></tr></thead><tbody>${L.map(m => {
+  const avisoFotos = sinFoto && S.f !== 'sinfoto' ? `<div class="alert pe mb">📷 <b>${sinFoto} modelo(s) con stock y sin fotos</b>: no aparecen en el catálogo. <button class="b sm" data-act="stkF" data-f="sinfoto">Ver cuáles</button></div>` : '';
+  if (!hay) { $('#st-lista').innerHTML = avisoFotos + '<div class="empty">Sin artículos</div>'; return; }
+  $('#st-lista').innerHTML = avisoFotos + `<table class="rt"><thead><tr><th>N°</th><th>Prenda</th><th>Talles</th><th class="n">Total</th><th class="n">P. venta</th><th></th></tr></thead><tbody>${L.map(m => {
     const n = T(m), off = m.activo === false, id = esc(m.id), ag = agotados(m);
     const tall = variantesDe(m.id).filter(s => s.activo !== false).map(s => { const k = +s.stock || 0; return `<span class="tl${k <= 0 ? ' z' : ''}">${s.talle === 'U' ? '' : '<b>' + esc(s.talle) + '</b> '}${k}</span>`; }).join('');
     return `<tr class="${off ? 'off' : ''}">
       <td data-l="N°"><span class="cod">${esc(numTxt(m))}</span>${off ? ' <span class="chip">📦 archivado</span>' : !n ? ' <span class="chip li">sin stock</span>' : ''}</td>
-      <td data-l="" class="full"><b>${esc(m.nombre)}</b> <span class="muted small">${esc(m.categoria || '')}${+m.num && (m.alias || []).length ? ' · antes ' + esc(m.alias.join(', ')) : ''}</span>${ag.length ? ` <span class="chip pe">se acabó: ${esc(ag.map(talleTxt).join(', '))}</span>` : ''}</td>
+      <td data-l="" class="full"><b>${esc(m.nombre)}</b> <span class="muted small">${esc(m.categoria || '')}${+m.num && (m.alias || []).length ? ' · antes ' + esc(m.alias.join(', ')) : ''}</span>${ag.length ? ` <span class="chip pe">se acabó: ${esc(ag.map(talleTxt).join(', '))}</span>` : ''}${off ? '' : (() => { const e = estadoWeb(m); return e.k === 'sin' && !n ? '' : ` <span class="chip ${e.k === 'sin' ? 'li' : e.cls}">${e.txt}</span>`; })()}${m.porLlegar ? ' <span class="chip">por llegar</span>' : ''}</td>
       <td data-l="Talles"><div class="tls">${tall || '—'}</div></td>
       <td data-l="Total" class="n"><b class="${n <= 0 ? 'c-li' : n <= 2 ? 'c-pe' : 'c-ok'}">${n}</b></td>
       <td data-l="P. venta" class="n">${fmtD(m.precioVenta)}</td>
@@ -1644,6 +1795,7 @@ function detalleModelo(m, costos) {
       <div><label class="lb">Costo (última compra)</label><div class="mono" style="padding:10px 2px">${u ? fmt(u) + (num(m.precioVenta) ? ` · margen <span class="${margenCls((m.precioVenta - u) / m.precioVenta * 100)}">${pctTxt((m.precioVenta - u) / m.precioVenta * 100)}</span>` : '') : '—'}</div></div>
     </div>
     <div class="row mt"><button class="b ok sm" data-act="stkGuardar" data-id="${id}">✓ Guardar</button><span class="grow"></span><button class="b sm dan" data-act="stkLiberar" data-id="${id}">📦 Archivar</button></div>
+    ${bloqueFotos(m)}
     <div class="sec-t">Talles · stock · etiquetas</div>
     ${filasT || '<div class="small muted">Sin talles</div>'}
     <div class="row mt"><button class="b sm" data-act="etqModelo" data-id="${id}">🏷️ Etiquetas de todo el stock (${totalModelo(m)})</button>
@@ -2145,6 +2297,10 @@ const ACT = {
   },
   stkF: d => { UI.stk.f = d.f; UI.stk.ab = null; UI.stk.max = 80; render(); },
   stkMas: () => { UI.stk.max = (UI.stk.max || 80) + 80; render(); },
+  fotoAgregar: d => elegirFotos(d.id),
+  fotoQuitar: d => borrarFoto(d.id, +d.i),
+  webPub: d => publicarModelo(d.id, d.si === '1'),
+  lnFotos: d => fotosDeLinea(d),
   stkAj: d => abrirAjuste(d.id),
   ajOk: d => ajusteOk(d.id),
   cntAbrir: () => abrirConteo(),

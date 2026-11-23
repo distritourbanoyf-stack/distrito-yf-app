@@ -16,7 +16,7 @@ Es una copia del molde de la app de otra tienda, con **cuentas, base y datos pro
 
 ## Reglas que no se rompen
 1. **El repo es público.** Nunca claves, contraseñas, números de cuenta, RUT, teléfonos personales ni datos de clientes. En `negocio.js` las cuentas de cobro van solo por nombre (Prex, Mercado Pago, Efectivo); teléfono y RUT se cargan en ⚙️ Config (quedan en la base).
-2. **Base:** Supabase `distrito-yf` (`bhtwuunoxkwesnjombuw`, São Paulo). Es la ÚNICA base de esta app. Nunca usar ni nombrar la base de la otra tienda. Las migraciones aplicadas: `base_esquema`, `base_stock` y `permisos_tablas_app` (proyectos nuevos de Supabase no dan permisos de tabla por defecto: toda tabla nueva necesita su `grant`) (copias en `supabase/migraciones/`; el esquema completo está en el Project como `base-esquema.txt`).
+2. **Base:** Supabase `distrito-yf` (`bhtwuunoxkwesnjombuw`, São Paulo). Es la ÚNICA base de esta app. Nunca usar ni nombrar la base de la otra tienda. Las migraciones aplicadas: `base_esquema`, `base_stock`, `permisos_tablas_app` y `catalogo_fotos_y_lectura_publica` (proyectos nuevos de Supabase no dan permisos de tabla por defecto: toda tabla nueva necesita su `grant`) (copias en `supabase/migraciones/`; el esquema completo está en el Project como `base-esquema.txt`).
 3. Todo cambio se prueba antes de publicar y queda en GitHub para poder volver atrás.
 
 ## Cómo se publica la app
@@ -41,6 +41,13 @@ En cada publicación:
 - Los lives son ocasionales: "🎥 Hacer un live" crea uno; "🛒 Volver a ventas" vuelve. Al abrir la app, si no hay un live de hoy, arranca en Ventas del mes.
 - Pestañas: Ventas, Despacho, 💬 WhatsApp (antes Mabel; los textos dicen "el agente"), Clientes, Guardados, 🤝 En mano (antes Mostrador), Config.
 - Colores: negro/blanco/gris (`--ac:#f2f2f2`); botones primarios con texto oscuro.
+
+## Fotos y catálogo web
+- Fotos: bucket público `fotos` de Supabase (solo fotos de prendas). Se suben desde Gestión → Stock → ficha del modelo → 📷 (la app las achica a 1400 px JPG). En el modelo se guardan las rutas en `m.fotos` (la primera es la portada); se ordenan arrastrando. Drive NO se usa para mostrar fotos.
+- Estados: sin fotos → ✅ listo (fotos + nombre + precio) → 🌐 publicado (`m.publicado`). Botones Publicar / Despublicar. Aviso en la lista de los que tienen stock y no tienen fotos.
+- Antes de que llegue la mercadería: en Historial, cada línea de una importación pedida tiene 📷 → crea el modelo (`m.porLlegar` = id de la compra, `l.mid` en la línea) para cargarle fotos, nombre y precio. La recepción usa ese modelo en la primera fila; al confirmar, los modelos listos se publican solos.
+- Catálogo (`catalogo/index.html`): lee `catalogo_publico()` (rpc pública con la clave publishable): SOLO modelos publicados, activos, con fotos, con precio y con stock; devuelve num, nombre, categoría, precio, fotos y talles con disponible. Con `?demo=1` muestra datos de ejemplo. Falta: número de WhatsApp (`WHATSAPP` en el archivo).
+- Toda tabla o función nueva expuesta a `anon` hay que revisarla: hoy `anon` no tiene permisos sobre ninguna tabla; solo puede llamar `catalogo_publico()`.
 
 ## Compras traídas de afuera
 - `config.importacionPendiente` (sin cifrar): al abrir Gestión con el código se convierte en compra "pedida" cifrada y se borra. `config.preciosPendientes` = { compraId, blue, uyu, costoImp, lineas: { lid: { precioImp, precioReal } } } carga precios a una compra ya convertida.

@@ -106,7 +106,7 @@ footer img{width:38px;opacity:.5;display:block;margin:0 auto 8px}
 </style>
 </head>
 <body>
-<div class="demo">Versión de prueba · nombres, precios y talles de ejemplo</div>
+<div class="demo" id="demo" hidden>Versión de prueba · nombres, precios y talles de ejemplo</div>
 <header>
   <img src="logo.png" alt="Distrito YF">
   <p>Montevideo · est. 2026</p>
@@ -134,11 +134,16 @@ footer img{width:38px;opacity:.5;display:block;margin:0 auto 8px}
 <script>
 'use strict';
 /* Catálogo de Distrito YF.
-   AHORA: datos de ejemplo (abajo). DESPUÉS: los mismos campos salen de la base (solo lo publicado y con stock).
+   Lee de la base con una lectura pública (catalogo_publico): SOLO modelos publicados, con fotos y con stock.
+   Con ?demo=1 en el link muestra datos de ejemplo (para probar el diseño).
    Cada modelo: num (código D), nombre para el cliente, categoria, precio, fotos [urls, la primera es la portada], talles { talle: unidades }. */
 const WHATSAPP = '';   // número de Distrito YF con código de país, ej. 59899123456 (pendiente)
 const ORDEN_T = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', '38', '40', '42', '44', '46', '48', '50', 'U'];
-const CATALOGO = [
+const BASE_URL = 'https://bhtwuunoxkwesnjombuw.supabase.co';
+const BASE_KEY = 'sb_publishable__emijvBRay1vB4dTazgcew_EQoEa_U9';   // clave pública (solo deja ver el catálogo)
+const DEMO = location.search.includes('demo');
+let CATALOGO = [];
+const EJEMPLO = [
   { num: 1,  nombre: 'Remera oversize negra',        categoria: 'Remera',   precio: 790,  fotos: ['demo/muestra-1.jpg', 'demo/muestra-2.jpg', 'demo/muestra-3.jpg'], talles: { S: 0, M: 3, L: 4, XL: 2, XXL: 1 } },
   { num: 2,  nombre: 'Remera estampada blanca',      categoria: 'Remera',   precio: 890,  talles: { M: 2, L: 3, XL: 0 } },
   { num: 3,  nombre: 'Bermuda de jean celeste',      categoria: 'Bermuda',  precio: 1290, fotos: ['demo/muestra-2.jpg', 'demo/muestra-1.jpg'], talles: { 38: 1, 40: 3, 42: 4, 44: 2, 46: 0 } },
@@ -162,7 +167,7 @@ const disponible = m => Object.values(m.talles).some(q => q > 0);
 let filtro = 'Todo';
 const tallesSel = new Set();   // filtro por talle: se pueden elegir varios
 let bolsa = [];
-try { bolsa = JSON.parse(localStorage.getItem('dyf_bolsa') || '[]').filter(x => CATALOGO.some(m => m.num === x.num)); } catch (e) { bolsa = []; }
+try { bolsa = JSON.parse(localStorage.getItem('dyf_bolsa') || '[]'); } catch (e) { bolsa = []; }
 const guardar = () => { try { localStorage.setItem('dyf_bolsa', JSON.stringify(bolsa)); } catch (e) {} };
 const enBolsa = (num, t) => bolsa.filter(x => x.num === num && x.t === t).length;
 
@@ -192,7 +197,7 @@ function pintarGrilla() {
     }).join('');
     return `<article class="card"><div class="foto${fs.length ? ' con' : ''}"${fs.length ? ` data-foto="${m.num}"` : ''}>${foto}<span class="cod">${codD(m)}</span>${fs.length ? '<span class="zoom">⤢</span>' : ''}${ago ? '<div class="ago">AGOTADO</div>' : ''}</div>
       <div class="info"><div class="nom">${esc(m.nombre)}</div><div class="pre">${fmt(m.precio)}</div><div class="tl">${tl}</div></div></article>`;
-  }).join('') : (tallesSel.size ? '<div class="vacio">No hay prendas en ese talle por ahora.</div>' : '<div class="vacio">No hay prendas en esta categoría por ahora.</div>');
+  }).join('') : !CATALOGO.length ? `<div class="vacio">${cargando ? 'Cargando…' : errorCarga ? 'No pudimos cargar el catálogo. Revisá tu conexión y recargá la página.' : 'Muy pronto: estamos preparando la colección. 👀'}</div>` : (tallesSel.size ? '<div class="vacio">No hay prendas en ese talle por ahora.</div>' : '<div class="vacio">No hay prendas en esta categoría por ahora.</div>');
 }
 function pintarBolsa() {
   const total = bolsa.reduce((s, x) => s + x.precio, 0);
@@ -266,7 +271,25 @@ $('#pedir').onclick = () => {
   if (!WHATSAPP) { alert('Versión de prueba: todavía no está el número de WhatsApp.\n\nEste es el mensaje que se mandaría:\n\n' + txt); return; }
   location.href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(txt);
 };
-pintar();
+let cargando = true, errorCarga = false;
+const urlFoto = p => /^https?:|^demo\//.test(p) ? p : BASE_URL + '/storage/v1/object/public/fotos/' + String(p).split('/').map(encodeURIComponent).join('/');
+async function cargar() {
+  if (DEMO) { CATALOGO = EJEMPLO; $('#demo').hidden = false; }
+  else {
+    try {
+      const r = await fetch(BASE_URL + '/rest/v1/rpc/catalogo_publico', { method: 'POST', headers: { apikey: BASE_KEY, 'Content-Type': 'application/json' }, body: '{}' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      CATALOGO = (Array.isArray(d) ? d : []).map(m => ({ num: +m.num, nombre: m.nombre || '', categoria: m.categoria || 'Otro', precio: +m.precio || 0, fotos: (m.fotos || []).map(urlFoto), talles: m.talles || {} }));
+    } catch (e) { console.error(e); errorCarga = true; }
+  }
+  cargando = false;
+  // La bolsa guardada: solo lo que sigue en el catálogo, con su precio actual y sin pasarse del stock
+  const cuenta = {};
+  bolsa = bolsa.filter(x => { const m = CATALOGO.find(c => c.num === x.num); if (!m) return false; const k = x.num + '|' + x.t; cuenta[k] = (cuenta[k] || 0) + 1; if (cuenta[k] > (m.talles[x.t] || 0)) return false; x.precio = m.precio; x.nombre = m.nombre; return true; });
+  guardar(); pintar();
+}
+pintar(); cargar();
 </script>
 </body>
 </html>
