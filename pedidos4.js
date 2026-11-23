@@ -1,0 +1,237 @@
+'use strict';
+/* ══════════════════════════════════════════════════════════════
+   DISTRITO YF PEDIDOS · ETAPA 4: talles, escáner de prenda, promos y VIP
+   - Tipear "142" muestra los talles del modelo (los sin stock tachados). Escanear "P142-M" carga la prenda directo.
+   - El total del pedido usa calcularPedido (promos.js): precio especial, combos/NxM en línea 🎁, live + VIP.
+   - Cada pedido guarda las promos y el % VIP con que se calculó (promoCalc): no cambia si después se edita una promo.
+   - ⭐ VIP en la ficha, candidatas a VIP y botón de bienvenida.
+   Se carga después de live.js (reemplaza funciones de Pedidos sin tocar el archivo original).
+   ══════════════════════════════════════════════════════════════ */
+
+// ─── Prendas y talles ─────────────────────────────────────────
+const esPrenda = s => /^P\d+(-[A-Z0-9]+)?$/i.test(String(s || '').trim());
+const modeloDeStock = id => { const s = id && DB.stock.find(x => x.id === id); return s ? s.modeloId || null : null; };
+const modeloActNum = n => (DB.modelos || []).find(m => m.activo !== false && +m.num === +n);
+const ORDEN_T = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '34', '36', '38', '40', '42', '44', '46', '48'];
+const tallesDe = m => DB.stock.filter(s => s.modeloId === m.id && s.activo !== false).sort((a, b) => (ORDEN_T.indexOf(a.talle) + 99) % 99 - (ORDEN_T.indexOf(b.talle) + 99) % 99);
+/** "P142-M", "142-M", "142" (talle único) → la fila de stock de ese talle. */
+function varPorCodigo(txt) {
+  const q = String(txt || '').trim().replace(/^P(?=\d)/i, '').toUpperCase();
+  if (!q) return null;
+  return stockActivo().find(s => String(s.codigo).toUpperCase() === q) || null;
+}
+
+const _qlInput = qlInput, _qlKey = qlKey, _qlHTML = qlHTML;
+qlHTML = function (px) {
+  const h = _qlHTML(px);
+  return h.replace('<div class="ql-info"', `<div class="row" style="margin-top:6px"><button class="b sm" data-act="camPrenda" data-px="${px}">📷 Escanear prenda</button></div><div class="ql-info"`);
+};
+/** Tipear el número de un modelo: aparecen sus talles. */
+qlInput = function (px) {
+  const st = QL[px], q = $('#' + px + '-txt').value.trim();
+  const m = /^\d+$/.test(q) && modeloActNum(q), vs = m ? tallesDe(m) : [];
+  if (!m || vs.length < 2) { st.q = q; return _qlInput(px); }
+  st.sel = null; $('#' + px + '-info').textContent = '';
+  st.items = vs.map(a => ({ a })).concat([{ manual: q }]);
+  st.idx = Math.max(0, vs.findIndex(a => a.stock > 0));
+  st.q = q;
+  const sug = $('#' + px + '-sug');
+  sug.innerHTML = `<div class="si" style="cursor:default;color:var(--mu);font-size:12px">${esc(m.num + ' · ' + m.nombre)} · ${fmt(m.precioVenta)} · elegí el talle</div>` + st.items.map((it, i) => it.a
+    ? `<div class="si${i === st.idx ? ' hi' : ''}" data-act="qlPick" data-px="${px}" data-i="${i}"${it.a.stock > 0 ? '' : ' style="opacity:.55"'}><b style="font-size:16px;display:inline-block;min-width:44px">${esc(it.a.talle)}</b> <span class="mono small">${esc(it.a.codigo)}</span> · ${it.a.stock > 0 ? 'quedan ' + it.a.stock : '<s>sin stock</s>'}</div>`
+    : `<div class="si${i === st.idx ? ' hi' : ''}" data-act="qlPick" data-px="${px}" data-i="${i}">✍️ Prenda manual: <b>${esc(it.manual)}</b> <span class="muted small">(no toca el stock)</span></div>`).join('');
+  // qlPick usa el índice dentro de items: el renglón de título no cuenta
+  sug.querySelectorAll('[data-act=qlPick]').forEach(el => { el.dataset.i = String(+el.dataset.i); });
+  sug.classList.add('on');
+};
+qlKey = function (px, e) {
+  if (e.key === 'Enter') {
+    const st = QL[px], txt = $('#' + px + '-txt'), q = txt.value.trim(), sug = $('#' + px + '-sug');
+    const v = varPorCodigo(q);
+    if (v) { e.preventDefault(); qlElegir(px, { a: v }); if (esPrenda(q)) qlConfirmar(px); return; }
+    const m = /^\d+$/.test(q) && modeloActNum(q);
+    if (m && tallesDe(m).length > 1) {
+      e.preventDefault();
+      if (!sug.classList.contains('on') || st.q !== q) { qlInput(px); return; }
+      return qlElegir(px, st.items[st.idx] || { manual: q });
+    }
+  }
+  return _qlKey(px, e);
+};
+qlMarcar = function (px) {
+  document.querySelectorAll('#' + px + '-sug [data-act=qlPick]').forEach(el => { const on = +el.dataset.i === QL[px].idx; el.classList.toggle('hi', on); if (on) el.scrollIntoView({ block: 'nearest' }); });
+};
+
+// ─── Escáner de prenda ────────────────────────────────────────
+function prendaEscaneada(px, t) {
+  const v = varPorCodigo(t);
+  if (!v) return toast(esPrenda(t) ? 'Esa prenda no está en el stock (¿archivada?)' : 'Eso no es una etiqueta de prenda', 3500);
+  qlElegir(px, { a: v }); qlConfirmar(px);
+  toast(`✓ ${v.codigo} · ${v.descripcion}${v.stock > 0 ? '' : ' (⚠️ figuraba sin stock)'}`);
+}
+const _codigoLeido = codigoLeido;
+codigoLeido = function (t) { const s = String(t).trim(); return esPrenda(s) ? s.toUpperCase() : _codigoLeido(t); };
+if (typeof buscarEnter === 'function') {
+  const _buscarEnter = buscarEnter;
+  buscarEnter = function () {
+    const q = String(UI.desp && UI.desp.q || '').trim();
+    if (esPrenda(q)) {
+      const v = varPorCodigo(q);
+      UI.desp.q = ''; const el = $('#dsp-q'); if (el) el.value = '';
+      return toast(v ? `👕 Es una prenda: ${v.codigo} · ${v.descripcion} · quedan ${v.stock}` : '👕 Etiqueta de prenda (no está en el stock)', 4500);
+    }
+    return _buscarEnter();
+  };
+}
+
+// ─── Cálculo del pedido con promos y VIP ──────────────────────
+const vipPctCfg = () => { const v = DB.config.vipPct; return Math.max(0, v === undefined || v === null || v === '' ? 5 : +v || 0); };   // cfg() de Pedidos no tiene valor por defecto
+const editable = p => p.estado === 'pendiente' && !(typeof pagado === 'function' && pagado(p)) && !p.cambio;
+/** Guarda en el pedido las promos que valen hoy (solo las que tocan sus prendas) y el % VIP de el cliente. */
+function refrescarPromos(p) {
+  if (!p || !editable(p)) return;
+  const mids = new Set(p.prendas.map(pr => modeloDeStock(pr.stockId)).filter(Boolean));
+  const hoy = hoyISO();
+  const promos = (DB.promos || []).filter(x => promoVigente(x, p.liveId, hoy) && (x.modelos || []).some(m => mids.has(m))).map(x => JSON.parse(JSON.stringify(x)));
+  const c = cliById(p.clienteId);
+  p.promoCalc = { fecha: hoy, promos, vipPct: c && c.vip ? vipPctCfg() : 0 };
+}
+function ctxPedido(p) {
+  const s = p.promoCalc || {}, live = liveById(p.liveId);
+  return { promos: s.promos || [], modeloDe: modeloDeStock, liveId: p.liveId, hoy: s.fecha || hoyISO(), livePct: live ? live.descuento : 0, vipPct: s.vipPct || 0 };
+}
+const calcViejo = calc;   // el cálculo anterior (sin promos ni VIP): sirve para comprobar que los pedidos viejos dan igual
+calc = function (p) {
+  const r = calcularPedido(p, ctxPedido(p));
+  r.desc = r.livePct; r.descMonto = r.descLive + r.descVip + r.descPromos + r.ahorroEspecial;
+  return r;
+};
+// Cada cambio de prendas pasa por recalcSaldo: ahí se actualizan las promos del pedido
+const _recalcSaldo = recalcSaldo;
+recalcSaldo = function (p) { refrescarPromos(p); return _recalcSaldo(p); };
+const _agregarPrenda = agregarPrenda;
+agregarPrenda = function (p, pr) {
+  _agregarPrenda(p, pr);
+  const s = pr.stockId && DB.stock.find(x => x.id === pr.stockId);
+  if (s && s.modeloId && (+s.stock || 0) <= 0 && esActivo(p.estado)) toast(`⚠️ Se acabó el ${s.codigo}${s.talle && s.talle !== 'U' ? ' (talle ' + s.talle + ')' : ''}`, 3500);
+};
+/** Renglones de descuentos para tarjetas y ventanas (reemplaza "Descuento X%"). */
+function descLineasHTML(t) {
+  if (!t.descMonto) return '';
+  const l = (txt, m, col) => `<div class="tot-l" style="color:var(--${col || 'ac'})"><span>${txt}</span><span>−${fmt(m)}</span></div>`;
+  return `<div class="tot-l"><span>Subtotal</span><span>${fmt(t.bruto + t.ahorroEspecial)}</span></div>`
+    + (t.ahorroEspecial ? l('🎁 Precios especiales', t.ahorroEspecial) : '')
+    + t.promos.map(x => l('🎁 ' + esc(x.nombre), x.monto)).join('')
+    + (t.descLive ? l(`🎉 Descuento live ${t.livePct}%`, t.descLive) : '')
+    + (t.descVip ? l(`⭐ Descuento VIP ${t.vipPct}%`, t.descVip) : '');
+}
+mensajePedido = function (p) {
+  const c = cliById(p.clienteId) || { nombre: '' }, live = liveById(p.liveId), t = calc(p);
+  // 11/11: las prendas de un combo van juntas con lo que queda el grupo ("Promo 3 por $1.800 → te queda en $1.800"); antes iba la lista
+  // con precios sin promo y abajo "🎁 promo: -$X", y los clientes no lo entendían.
+  const d = desglosePedido(p, t), nom = (i, q) => `- ${(p.prendas[i] || {}).nombre || ''}${q > 1 ? ' x' + q : ''}`;
+  const bloques = d.grupos.map(g => `🎁 *Promo ${g.txt}${g.veces > 1 ? ' (x' + g.veces + ')' : ''}*\n${g.items.map(x => nom(x.i, x.q)).join('\n')}\nTe queda en *${fmt(g.queda)}* (en vez de ~${fmt(g.antes)}~)`);
+  const sueltas = d.sueltas.map(s => s.lista > s.tot ? `${nom(s.i, s.q)}: ~${fmt(s.lista)}~ *${fmt(s.tot)}*` : `${nom(s.i, s.q)}: ${fmt(s.tot)}`).join('\n');
+  if (sueltas) bloques.push((d.grupos.length ? 'Fuera de promo:\n' : '') + sueltas);
+  let msg = `¡Hola ${c.nombre}! ¿Cómo estás? 😊\nTe paso el detalle de tu pedido #${p.num} 🛍️\n\n${bloques.join('\n\n')}`;
+  const desc = [];
+  if (t.descLive) desc.push(`🎉 Descuento live ${t.livePct}%: -${fmt(t.descLive)}`);
+  if (t.descVip) desc.push(`⭐ Descuento VIP ${t.vipPct}%: -${fmt(t.descVip)}`);
+  if (desc.length) msg += '\n\n' + desc.join('\n');
+  if (t.saldo) msg += `\n💰 Saldo a favor: -${fmt(t.saldo)}`;
+  msg += `\n\n*Total: ${fmt(t.total)}* ✅`;
+  if (live && live.fechaPago) msg += `\n📅 Podés pagarlo hasta ${live.fechaPago}`;
+  const pago = cfg('msgPago');
+  if (pago) msg += '\n\n' + pago;
+  msg += '\n\n¡Gracias por elegir ' + negocio('nombre') + '! 💕';
+  return msg;
+};
+
+// ─── VIP ──────────────────────────────────────────────────────
+const VIP_MSG_DEF = '{nombre}, ¿cómo estás? 😊\nTe escribimos para contarte que desde hoy sos *cliente VIP* y parte de la *Comunidad VIP de Distrito YF* ⭐\nEs un grupito de clientes que nos acompañan hace tiempo, que compran seguido y con las que da gusto trabajar. Y vos sos una de ellas.\nTu beneficio: *{descuento}% de descuento VIP* en todos tus pedidos, de forma automática. Además, vas a ser de las primeras en enterarte de novedades y promos.\n¡Bienvenida a la comunidad! 💕';
+function textoBienvenidaVip(nombre) {
+  const link = String(cfg('vipGrupo') || '').trim();
+  return (cfg('vipMensaje') || VIP_MSG_DEF).replace(/\{nombre\}/g, nombre).replace(/\{descuento\}/g, vipPctCfg()) + (link ? '\n\nSumate al grupo: ' + link : '');
+}
+/** Recalcula los pedidos abiertos de el cliente (al hacerla VIP o sacarla). */
+function recalcPedidosDe(cid) { todosPedidos().filter(p => p.clienteId === cid && editable(p)).forEach(p => recalcSaldo(p)); }
+function hacerVip(c, si) {
+  if (si) { c.vip = true; c.vipDesde = c.vipDesde || hoyISO(); }
+  else { c.vip = false; }
+  recalcPedidosDe(c.id);
+  guardar();
+}
+const VIP_MIN = 4, VIP_DIAS = 60;
+/** Puntaje VIP (acordado 24/10): cada pedido suma 1 punto y cada $1.000 suma 1 punto, con menos peso cuanto más viejo:
+ *  últimos 2 meses ×1 · de 2 a 6 meses ×0,5 · más de 6 meses ×0,25.
+ *  Constancia: +2 puntos por cada uno de los últimos 6 meses en que compró (premia a la que siempre aparece aunque compre poco). */
+const VIP_PESOS = [[60, 1], [180, 0.5], [Infinity, 0.25]];
+const VIP_TOP = 15;
+const pesoVip = dias => VIP_PESOS.find(([d]) => dias <= d)[1];
+function comprasVip() {
+  const r = new Map(), hoy = new Date(hoyISO() + 'T12:00:00');
+  const sumar = (cid, fecha, monto) => {
+    if (!cid || !fecha) return;
+    const dias = Math.max(0, Math.round((hoy - new Date(String(fecha).slice(0, 10) + 'T12:00:00')) / 864e5));
+    const x = r.get(cid) || { pts: 0, n60: 0, m60: 0, n: 0, meses: new Set() };
+    const w = pesoVip(dias);
+    x.pts += w * (1 + monto / 1000); x.n++;
+    if (dias <= 60) { x.n60++; x.m60 += monto; }
+    if (dias <= 180) x.meses.add(String(fecha).slice(0, 7));
+    r.set(cid, x);
+  };
+  for (const l of DB.lives) for (const p of l.pedidos || []) {
+    if (p.cambio || !esActivo(p.estado)) continue;
+    sumar(p.clienteId, (p.fechas && p.fechas.creado) || l.fecha, calc(p).total);
+  }
+  // Compras de la app vieja que quedaron en el historial de la ficha
+  for (const c of DB.clientes) for (const h of c.historialViejo || []) if (h.tipo === 'ok') sumar(c.id, h.fecha, +h.total || 0);
+  for (const x of r.values()) { x.constancia = Math.min(6, x.meses.size); x.pts = Math.round((x.pts + x.constancia * 2) * 10) / 10; }
+  return r;
+}
+function candidatasVip() {
+  const m = stats(), lim = new Date(Date.now() - VIP_DIAS * 864e5).toISOString(), rec = comprasVip();
+  return DB.clientes.filter(c => !c.vip && !c.noVip && (m[c.id] || ST0).ok >= VIP_MIN && !(m[c.id] || ST0).mal && !(m[c.id] || ST0).deudas.length && (c.ultimoUso || '') >= lim)
+    .map(c => { c._vipRec = rec.get(c.id) || { pts: 0, n60: 0, m60: 0, n: 0, constancia: 0 }; c._vipPts = c._vipRec.pts; return c; })
+    .sort((a, b) => b._vipPts - a._vipPts || b._vipRec.m60 - a._vipRec.m60 || (m[b.id].ok - m[a.id].ok));
+}
+const _nomAlias = nomAlias;
+nomAlias = c => _nomAlias(c) + (c && c.vip ? ' <span class="chip ac" title="Cliente VIP">⭐ VIP</span>' : '');
+const _itemClienta = itemClienta;
+itemClienta = function (c, h) {
+  const btn = c.vip
+    ? `<button class="b sm" data-act="vipBienv" data-cid="${c.id}" title="Mandar mensaje de bienvenida">💬 Bienvenida VIP</button><button class="b sm gh" data-act="vipNo" data-cid="${c.id}" title="Sacar de VIP">✕ VIP</button>`
+    : `<button class="b sm" data-act="vipSi" data-cid="${c.id}">⭐ Hacer VIP</button>`;
+  let html = _itemClienta(c, h).replace('<button class="b sm" data-act="clEdit"', btn + '<button class="b sm" data-act="clEdit"');
+  if (c.vip) html = html.replace('<div class="row mt">', `<div class="small muted mt">⭐ VIP desde el ${fechaUY(c.vipDesde)} · ${c.bienvenidaVip ? 'bienvenida enviada el ' + fechaUY(c.bienvenidaVip, 1) : '<span style="color:var(--pe)">falta mandar la bienvenida</span>'}</div><div class="row mt">`);
+  return html;
+};
+const _renderClientes = renderClientes;
+renderClientes = function () {
+  _renderClientes();
+  const cs = candidatasVip(), el = $('#cl-deshacer'); if (!el) return;
+  const vips = DB.clientes.filter(c => c.vip).length;
+  el.insertAdjacentHTML('beforeend', `<details class="card" id="cl-vip"${UI.vipAbierto ? ' open' : ''}><summary style="cursor:pointer;font-weight:700">⭐ VIP: ${vips} cliente${vips === 1 ? '' : 's'} · ${cs.length} candidata${cs.length === 1 ? '' : 's'}</summary>
+    <p class="small muted mt">Candidatas: ${VIP_MIN} o más pedidos ✅, ningún ❌ ni deuda, y compró en los últimos ${VIP_DIAS} días. Se actualiza solo con cada live; las que ya son VIP salen de la lista y entran las siguientes. Decidís vos.</p>
+    <p class="small muted">Puntaje: cada pedido y cada $1.000 suman 1 punto (últimos 2 meses), 0,5 (de 2 a 6 meses) y 0,25 (más viejos), + 2 puntos por cada mes de los últimos 6 en que compró.</p>
+    ${cs.length ? cs.slice(0, UI.vipTodas ? 100 : VIP_TOP).map((c, i) => { const h = stats()[c.id] || ST0, x = c._vipRec; return `<div class="row" style="padding:6px 0;border-bottom:1px solid var(--bd)"><b class="mono" style="min-width:26px">${i + 1}.</b><span class="grow" style="flex:1;min-width:0">${esc(c.nombre)} ${histHTML(h)}<div class="small muted">${x.n60} pedido${x.n60 === 1 ? '' : 's'} · ${fmt(x.m60)} en 2 meses · compró ${x.constancia} de los últimos 6 meses</div></span><span class="chip ac" title="Puntaje VIP">${String(c._vipPts).replace('.', ',')} pts</span><button class="b sm" data-act="vipSi" data-cid="${c.id}">⭐ Hacer VIP</button><button class="b sm gh" data-act="vipDescartar" data-cid="${c.id}" title="No mostrarla más como candidata">No</button></div>`; }).join('') + (cs.length > VIP_TOP ? `<button class="b sm gh mt" data-act="vipVerTodas">${UI.vipTodas ? '▲ Ver solo las primeras ' + VIP_TOP : '▼ Ver más (' + (cs.length - VIP_TOP) + ')'}</button>` : '') : '<div class="small muted">No hay candidatas nuevas.</div>'}
+  </details>`);
+  const d = $('#cl-vip'); if (d) d.addEventListener('toggle', () => { UI.vipAbierto = d.open; });
+};
+function mandarBienvenida(c) {
+  if (!c.tel && !pedirTel(c)) return;
+  if (abrirWA(c.tel, textoBienvenidaVip(c.nombre))) { c.bienvenidaVip = ahoraISO(); guardar(); render(); }
+}
+Object.assign(ACT, {
+  camPrenda: d => abrirCamara(t => prendaEscaneada(d.px, t), 'Apuntá al QR de la etiqueta de la prenda'),
+  vipSi: d => {
+    const c = cliById(d.cid); if (!c) return;
+    hacerVip(c, true); render();
+    showModal(`<h3>⭐ ${esc(c.nombre)} ya es VIP</h3><p class="mb">Desde ahora tiene <b>${vipPctCfg()}% de descuento VIP</b> en sus pedidos (sumado al del live, sobre las prendas sin promo). Sus pedidos abiertos ya se recalcularon.</p>
+      <div class="box small" style="white-space:pre-wrap;margin-bottom:12px">${esc(textoBienvenidaVip(c.nombre))}</div>
+      <div class="row"><button class="b ok" data-act="vipBienv" data-cid="${c.id}">💬 Mandar bienvenida</button><button class="b gh" data-act="closeModal">Después</button></div>`);
+  },
+  vipBienv: d => { const c = cliById(d.cid); if (!c) return; closeModal(); mandarBienvenida(c); },
+  vipNo: d => { const c = cliById(d.cid); if (!c || !confirm(`¿Sacar a ${c.nombre} de VIP?\nSus pedidos abiertos dejan de tener el descuento VIP.`)) return; hacerVip(c, false); render(); },
+  vipVerTodas: () => { UI.vipTodas = !UI.vipTodas; render(); },
+  vipDescartar: d => { const c = cliById(d.cid); if (!c) return; c.noVip = true; guardar(); render(); }
+});

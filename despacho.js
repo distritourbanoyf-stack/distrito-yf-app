@@ -1,0 +1,960 @@
+'use strict';
+/* ══════════════════════════════════════════════════════════════
+   DISTRITO YF · DESPACHO (reemplaza a Salidas)
+   Buscás o escaneás → ves los pedidos abiertos de el cliente → tildás →
+   elegís cómo sale (Retiro / Agencia / Cadetería / Guardado / Liberado) → listo.
+   Cada salida queda como un "paquete" (tabla paquetes) y lleva una sola etiqueta.
+   Si un pedido no figura pagado, avisa y deja marcar "Pagó" con la cuenta (tabla pagos).
+   ══════════════════════════════════════════════════════════════ */
+
+(() => {
+  const st = document.createElement('style');
+  st.textContent = `
+.dsp-q{font-size:18px;padding:14px}
+.dsp-p{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--s1);margin-bottom:8px;cursor:pointer;user-select:none}
+.dsp-p.on{border-color:var(--ac);background:var(--ac2)}
+.dsp-chk{width:26px;height:26px;border:2px solid var(--mu);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;color:#fff}
+.dsp-p.on .dsp-chk{background:var(--ac);border-color:var(--ac)}
+.dsp-p .pc-tot{font-size:16px}
+.dsp-segs{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.dsp-segs .b{padding:11px 4px;font-size:13px;white-space:normal;text-align:center}
+.dsp-sal{border:2px solid var(--ac)}
+#dsp-go{white-space:normal;text-align:center;line-height:1.25}
+.dsp-a{display:flex;gap:8px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--bd);cursor:pointer}
+.dsp-a:last-child{border-bottom:none}
+.dsp-a:hover{background:var(--s2)}
+.dsp-a .nm{font-weight:700;font-size:15px}
+.dsp-k{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd);flex-wrap:wrap}
+.dsp-k:last-child{border-bottom:none}
+.dsp-fil{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.dsp-fil .b{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;font-size:13px;white-space:normal;text-align:center}
+.dsp-fil .b b{font-size:22px;line-height:1}
+.dsp-fil .b.on{border-color:var(--ac);background:var(--ac2);color:var(--ac)}
+.dsp-vistas{grid-template-columns:repeat(3,1fr);position:sticky;top:0;z-index:5;background:var(--bg,#fff);padding:6px 0 8px;margin-bottom:6px}
+.dsp-vistas .b.warn:not(.on){border-color:var(--li);color:var(--li)}
+.dsp-ag-h{font-weight:800;font-size:13px;letter-spacing:.5px;color:var(--ac);padding:10px 2px 2px;text-transform:uppercase}
+.sheet-t.a4ag{margin:2mm 0 0 2mm;page-break-after:auto;break-after:auto}
+@media print{body{min-height:0!important}#print-area{display:flow-root!important}}
+.sheet-t.a4ag+.sheet-t.a4ag{page-break-before:always;break-before:page}
+@font-face{font-family:'Poppins';font-weight:400;font-display:block;src:url(fonts/Poppins-Regular.woff) format('woff')}
+@font-face{font-family:'Poppins';font-weight:500;font-display:block;src:url(fonts/Poppins-Medium.woff) format('woff')}
+@font-face{font-family:'Poppins';font-weight:700;font-display:block;src:url(fonts/Poppins-Bold.woff) format('woff')}
+@font-face{font-family:'Poppins';font-weight:900;font-display:block;src:url(fonts/Poppins-Black.woff) format('woff')}
+.lbl.ag2,.sheet-t>.lbl.ag2{--u:.096639mm;position:relative;flex:none;align-self:flex-start;box-sizing:border-box;width:calc(var(--u)*952);height:calc(var(--u)*1444);padding:0;border:calc(var(--u)*8) solid #000;border-radius:calc(var(--u)*22);overflow:hidden;background:#fff;color:#000;font-family:'Poppins','DM Sans',Arial,sans-serif;line-height:1}
+.ag2 *{box-sizing:border-box}
+.ag2-in{position:absolute;left:calc(var(--u)*-8);top:calc(var(--u)*-8);width:calc(var(--u)*952);height:calc(var(--u)*1444)}
+.ag2-c{position:absolute;left:0;width:100%;text-align:center;white-space:pre}
+.ag2-c img{display:block;margin:0 auto}
+.ag2-hr{position:absolute;height:calc(var(--u)*4);background:#000}
+.ag2-fl{position:absolute;left:calc(var(--u)*77);top:calc(var(--u)*512);width:calc(var(--u)*860)}
+.ag2-lab{margin-left:calc(var(--u)*2);height:calc(var(--u)*40);font-size:calc(var(--u)*40);font-weight:400;letter-spacing:.12em;line-height:1}
+.ag2-nom{margin-top:calc(var(--u)*19);font-weight:700;white-space:nowrap}
+.ag2-r{display:flex;align-items:center}
+.ag2-ic{flex:none;width:calc(var(--u)*58);display:flex;justify-content:center}
+.ag2-rt{margin-left:calc(var(--u)*37);font-weight:400;white-space:pre;line-height:1}
+.ag2-dir{margin-left:calc(var(--u)*95);width:calc(var(--u)*735);font-weight:400;font-size:calc(var(--u)*44);line-height:calc(var(--u)*46);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ag2-box{position:absolute;left:calc(var(--u)*59);top:calc(var(--u)*1189);width:calc(var(--u)*835);height:calc(var(--u)*200);border:calc(var(--u)*6) solid #000;border-radius:calc(var(--u)*22);display:flex;align-items:center;justify-content:center;font-weight:700;white-space:nowrap}
+@media (max-width:520px){.dsp-segs{grid-template-columns:repeat(3,1fr)}.dsp-p{gap:8px;padding:10px}}
+`;
+  document.head.appendChild(st);
+})();
+
+UI.desp = { filtro: 'todos', q: '', idx: 0, items: [], cid: null, sel: new Set(), salida: null, f: {}, sinPago: false, aviso: '', res: null };
+
+const CUENTAS_DEF = NEGOCIO_DEF.cuentasPago;
+const extraCobroCadete = () => { const v = cfg('extraCobroCadete'); return v == null || v === '' ? NEGOCIO_DEF.extraCobroCadete : (+v || 0); };
+const cuentasPago = () => { const c = cfg('cuentasPago'); return Array.isArray(c) && c.length ? c : CUENTAS_DEF; };
+const SALIDAS = [['retiro', '🏠 Retiro'], ['agencia', '📦 Agencia'], ['cadeteria', '🚴 Cadetería'], ['guardado', '⏸️ Guardado'], ['liberado', '❌ Liberado'], ['pago', '💸 Solo pago']];
+const conPago = t => ENVIOS.has(t) || t === 'pago';
+const esTactil = () => !!(window.matchMedia && matchMedia('(pointer:coarse)').matches);
+const ENVIOS = new Set(['retiro', 'agencia', 'cadeteria']);
+const savePaquetes = () => put('emma_paquetes', DB.paquetes);
+const savePagos = () => put('emma_pagos', DB.pagos);
+const paqById = id => (DB.paquetes || []).find(k => k.id === id);
+
+// ─── Reglas ───────────────────────────────────────────────────
+/** Pagado = marcado con "Pagó", o en estado listo (así se marcaba hasta ahora). Un cambio no se cobra acá. */
+const pagado = p => !!p.cambio || !!p.pago || p.estado === 'listo';
+/** En Despacho se pide la cuenta de todo pedido que no tenga un pago marcado (los cambios no se cobran acá). */
+const porCobrar = p => !p.cambio && !p.pago;
+/** Código de la etiqueta de GrisalExpress: EMMA + su N Orden (letras y números, con algún número; ej. EMMAHMGU5CMH). Un nombre como "Emma Pérez" no lo es. */
+const esGrisal = q => /^(ema)?emma(?=[a-z]*\d)[a-z0-9]{6,16}$/i.test(String(q).trim());
+/** Pedidos de un cliente que todavía no salieron, del más viejo al más nuevo. */
+function abiertosDe(cid) {
+  return todosPedidos().filter(p => p.clienteId === cid && sinSalir(p))
+    .sort((a, b) => (a.fechas.creado || '').localeCompare(b.fechas.creado || '') || a.num - b.num);
+}
+/** 7/11: lo que deja Mabel en el pedido. avisoDespacho = aviso corto para el momento de cerrar ("tiene paquete de Yharol"); retiroCuando = cuándo dijo que pasa a retirar {fecha, hora, texto}. Se ven solo mientras el pedido no salió. */
+const avisosDe = ps => [...new Set(ps.map(p => String(p.avisoDespacho || '').trim()).filter(Boolean))];
+const DIA_CORTO = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+function retiroDiaTxt(fecha) {
+  const h = hoyISO(); if (!fecha) return 'Sin horario';
+  const d = DIA_CORTO[new Date(fecha + 'T12:00:00').getDay()] + ' ' + fechaUY(fecha, 1);
+  return fecha === h ? 'Hoy · ' + d : fecha === sumarDias(h, 1) ? 'Mañana · ' + d : fecha < h ? 'Pasó · ' + d : d;
+}
+/** Texto corto de cuándo pasa: "Hoy 18:00", "vie 7/11 18:00" o lo que escribió el cliente si no se pudo ordenar. */
+function retiroCuandoTxt(p) {
+  const r = p.retiroCuando; if (!r) return '';
+  if (!r.fecha) return r.texto ? String(r.texto) : '';
+  const h = hoyISO(), d = r.fecha === h ? 'Hoy' : r.fecha === sumarDias(h, 1) ? 'Mañana' : DIA_CORTO[new Date(r.fecha + 'T12:00:00').getDay()] + ' ' + fechaUY(r.fecha, 1);
+  return d + (r.hora ? ' ' + r.hora : '');
+}
+const retiroClave = p => { const r = p.retiroCuando; return r && r.fecha ? r.fecha + ' ' + (r.hora || '99:99') : '9999-99-99 99:99'; };
+/** Retiros anotados (pagados o que pagan al llegar), por cliente, ordenados por cuándo dijeron que pasan; los sin horario, al final. */
+function retirosLista() {
+  const G = new Map();
+  for (const p of todosPedidos()) {
+    if (!sinSalir(p) || p.estado === 'guardado' || entregaEf(p) !== 'retiro') continue;
+    if (!G.has(p.clienteId)) G.set(p.clienteId, []);
+    G.get(p.clienteId).push(p);
+  }
+  const creado = ps => ps.map(p => p.fechas.creado || '').sort()[0] || '';
+  return [...G.entries()].map(([cid, ps]) => ({ cid, ps: ps.sort((a, b) => (a.fechas.creado || '').localeCompare(b.fechas.creado || '') || a.num - b.num), k: ps.map(retiroClave).sort()[0] }))
+    .sort((a, b) => a.k.localeCompare(b.k) || creado(a.ps).localeCompare(creado(b.ps)));
+}
+const listaTipo = t => t === 'retiro' ? retirosLista() : (paraArmar()[t] || []);
+/** El pedido "principal" del paquete: el más nuevo (su número y código van en la etiqueta). */
+const principal = ps => [...ps].sort((a, b) => (b.fechas.creado || '').localeCompare(a.fechas.creado || '') || b.num - a.num)[0];
+const numsTxt = ps => ps.map(p => '#' + p.num).join(' · ');
+
+/** Medio del pago según la cuenta: Mercado Pago (transferencia/link) lleva recargo; Efectivo y los POS (Mercado Pago, Scantech) son al retirar, sin recargo; el resto, transferencia. */
+const medioDe = cuenta => /^pos\b/i.test((cuenta || '').trim()) ? 'efectivo' : /mercado\s*pago/i.test(cuenta || '') ? 'mercadopago' : /efectivo|d[eé]bito|cr[eé]dito/i.test(cuenta || '') ? 'efectivo' : 'transferencia';
+const recargoMP = () => { const v = DB.config.mpRecargo; return v === undefined || v === null || v === '' ? NEGOCIO_DEF.mpRecargo : Math.max(0, +v || 0); };
+/** Lo que tiene que transferir: pedidos + envío (si lo transfiere) + recargo de Mercado Pago. */
+function esperadoDe(base, env, cuenta) { const rec = medioDe(cuenta) === 'mercadopago' ? Math.round((base + env) * recargoMP() / 100) : 0; return { base, env, rec, total: base + env + rec }; }
+/** Pago con 2 medios. x = lo que entró por el 2º medio (ya con el recargo si ese medio es Mercado Pago). El recargo va solo sobre la parte que pagó por Mercado Pago. */
+function esperadoDos(base, env, c1, c2, x) {
+  const T = base + env, r = recargoMP() / 100, mp1 = medioDe(c1) === 'mercadopago', mp2 = medioDe(c2) === 'mercadopago';
+  x = Math.max(0, Math.round(+x || 0));
+  const part2 = Math.min(T, mp2 ? Math.round(x / (1 + r)) : x), part1 = T - part2;
+  const rec1 = mp1 ? Math.round(part1 * r) : 0, rec2 = mp2 ? Math.max(0, x - part2) : 0;
+  return { T, part1, part2, rec1, rec2, tot1: part1 + rec1, tot2: part2 + rec2, rec: rec1 + rec2, total: T + rec1 + rec2, ok: part1 > 0 && part2 > 0 && !!c2 && c2 !== c1 };
+}
+function marcarPago(p, cuenta, origen) {
+  const g = { id: uid('g'), pedidoId: p.id, clienteId: p.clienteId, cuenta, medio: medioDe(cuenta), monto: p.cambio ? (p.cambio.cobrar || 0) : calc(p).total, fecha: ahoraISO(), origen: origen || 'despacho', antes: p.estado };
+  DB.pagos.push(g);
+  p.pago = { id: g.id, cuenta, fecha: g.fecha };
+  if (p.estado === 'pendiente') setEstado(p, 'listo');
+  return g;
+}
+/** Anula un pago marcado por error: el pedido vuelve a "sin pagar" (y a pendiente si estaba pendiente). */
+function anularPago(id) {
+  const g = DB.pagos.find(x => x.id === id); if (!g) return;
+  const p = pedById(g.pedidoId);
+  // Pago con 2 medios: las dos filas de ese pedido se anulan juntas
+  const ids = g.splitId ? DB.pagos.filter(x => x.splitId === g.splitId && x.pedidoId === g.pedidoId).map(x => x.id) : [id];
+  DB.pagos = DB.pagos.filter(x => !ids.includes(x.id));
+  if (p && p.pago && ids.includes(p.pago.id)) {
+    delete p.pago;
+    if (g.antes === 'pendiente' && p.estado === 'listo') setEstado(p, 'pendiente');
+  }
+}
+
+/** Pagados que esperan salir, por tipo de entrega (sin retiro: esos se entregan cuando vienen). */
+function paraArmar() {
+  const G = { cadeteria: new Map(), agencia: new Map(), retiro: new Map(), sin_definir: new Map() };
+  for (const p of todosPedidos()) {
+    if (!sinSalir(p) || p.estado === 'guardado' || !pagado(p)) continue;
+    const t = entregaEf(p); if (!G[t]) continue;
+    if (!G[t].has(p.clienteId)) G[t].set(p.clienteId, []);
+    G[t].get(p.clienteId).push(p);
+  }
+  const orden = m => [...m.entries()].map(([cid, ps]) => ({ cid, ps: ps.sort((a, b) => (a.fechas.creado || '').localeCompare(b.fechas.creado || '') || a.num - b.num) }))
+    .sort((a, b) => (a.ps[0].fechas.creado || '').localeCompare(b.ps[0].fechas.creado || ''));
+  return { cadeteria: orden(G.cadeteria), agencia: orden(G.agencia), retiro: orden(G.retiro), sin_definir: orden(G.sin_definir) };
+}
+function despBadge() {
+  const el = document.getElementById('bdg-desp'); if (!el) return;
+  const a = paraArmar(), n = a.cadeteria.length + a.agencia.length;
+  el.innerHTML = n ? ` <span class="bdg">${n}</span>` : '';
+}
+
+// ─── Pantalla ─────────────────────────────────────────────────
+function renderDespacho() {
+  const el = $('#p-despacho'); if (!el) return;
+  if (!el.dataset.ok) {
+    el.innerHTML = `<div class="card"><div class="row" style="flex-wrap:nowrap"><div class="sw" style="flex:1;min-width:0"><input id="dsp-q" class="dsp-q" data-inp="despQ" placeholder="🔎 Nombre, teléfono o código" autocomplete="off" autocapitalize="off" enterkeyhint="search"><div class="sug" id="dsp-sug"></div></div><button class="b lg" data-act="camDesp" title="Escanear con la cámara" style="padding:14px 16px">📷</button></div></div>
+      <div id="dsp-res"></div><div id="dsp-body"></div>`;
+    el.dataset.ok = '1';
+  }
+  $('#dsp-res').innerHTML = resHTML();
+  $('#dsp-body').innerHTML = UI.desp.cid && cliById(UI.desp.cid) ? clientaHTML() : inicioHTML();
+}
+function resHTML() {
+  const r = UI.desp.res; if (!r) return '';
+  const k = r.paqId && paqById(r.paqId);
+  if (k) {
+    const c = cliById(k.clienteId) || { nombre: '?' };
+    const txt = { retiro: '🏠 Entregado', agencia: '📦 Sale por agencia', cadeteria: '🚴 Sale por cadetería' }[k.tipo];
+    return `<div class="card"><div class="big-alert ok" style="margin-top:0">${txt} · ${esc(c.nombre)}<div style="font-size:15px;font-weight:700;margin-top:4px">${esc(k.nums.map(n => '#' + n).join(' · '))}${k.tipo === 'cadeteria' ? ' · ' + (k.cobro ? 'cobra ' + fmt(k.cobro) : 'envío pago') : ''}</div></div>
+      <div class="row mt">${k.tipo !== 'retiro' ? `<button class="b pri" id="dsp-print" data-act="despPrint" data-k="${k.id}">🖨️ Imprimir etiqueta</button>` : ''}<button class="b sm" data-act="waCli" data-cid="${k.clienteId}" title="Abrir el chat vacío">💬 Chat</button><span class="grow"></span><button class="b sm gh" data-act="despDeshacer" data-k="${k.id}">↩️ Deshacer</button><button class="b sm gh" data-act="despResX">✕</button></div></div>`;
+  }
+  return `<div class="card"><div class="big-alert ${r.cls || 'mu'}" style="margin-top:0">${r.html}</div><div class="row mt"><span class="grow"></span>${r.pagos && r.pagos.some(id => DB.pagos.some(g => g.id === id)) ? '<button class="b sm gh" data-act="despDeshacerPago">↩️ Deshacer</button>' : ''}${r.cid ? `<button class="b sm" data-act="waCli" data-cid="${r.cid}" title="Abrir el chat vacío">💬 Chat</button><button class="b sm" data-act="despAbrir" data-cid="${r.cid}">Ver cliente</button>` : ''}<button class="b sm gh" data-act="despResX">✕</button></div></div>`;
+}
+
+// ── Inicio: pagados para armar + lo que salió hoy ──
+function inicioHTML() {
+  const a = paraArmar(), m = stats();
+  a.retiro = retirosLista();
+  const grupo = (tipo, titulo, ayuda) => {
+    let gs = a[tipo]; if (!gs.length) return '';
+    const agKey = cid => ((cliById(cid) || {}).agencia || '').trim().toUpperCase();
+    if (tipo === 'agencia') gs = [...gs].sort((x, y) => (!agKey(x.cid)) - (!agKey(y.cid)) || agKey(x.cid).localeCompare(agKey(y.cid)));
+    let agAnt = null;
+    if (tipo === 'retiro') gs = gs.map(g => ({ ...g, dia: (g.ps.map(p => p.retiroCuando && p.retiroCuando.fecha).filter(Boolean).sort()[0]) || '' }));
+    return `<div class="card"><div class="card-t">${titulo} <span class="bdg">${gs.length}</span></div>${ayuda ? `<div class="small muted mb">${ayuda}</div>` : ''}
+      ${gs.map(({ cid, ps }) => {
+        const c = cliById(cid) || { nombre: '?' }, art = ps.reduce((s, p) => s + (p.cambio ? p.cambio.art : calc(p).art), 0);
+        const marcas = [];
+        if (tipo === 'cadeteria' && !(c.direccion || '').trim()) marcas.push('<span class="chip li">⚠️ sin dirección</span>');
+        if (tipo === 'agencia' && !(c.agencia || '').trim()) marcas.push('<span class="chip li">⚠️ sin agencia</span>');
+        if ((m[cid] || ST0).guardados.length) marcas.push('<span class="chip gu">⏸️ tiene guardado</span>');
+        if (tipo === 'retiro') {
+          if (ps.some(p => !pagado(p))) marcas.push('<span class="chip pe">💵 paga al llegar</span>');
+          if (avisosDe(ps).length) marcas.push('<span class="chip li">📌 tiene aviso</span>');
+        }
+        if (ps.some(p => p.cambio)) marcas.push('<span class="chip ac">🔄 cambio</span>');
+        const g0 = gs.find(x => x.cid === cid), rcTxt = tipo === 'retiro' ? ps.map(retiroCuandoTxt).filter(Boolean)[0] || '' : '';
+        const k = tipo === 'agencia' ? agKey(cid) || 'SIN AGENCIA' : tipo === 'retiro' ? retiroDiaTxt(g0.dia) : null, cab = k && k !== agAnt ? `<div class="dsp-ag-h">${esc(k)} · ${tipo === 'retiro' ? gs.filter(x => retiroDiaTxt(x.dia) === k).length : gs.filter(x => (agKey(x.cid) || 'SIN AGENCIA') === k).length}</div>` : '';
+        if (k) agAnt = k;
+        return cab + `<div class="dsp-a" data-act="despArmar" data-cid="${cid}" data-t="${tipo}">
+          <div style="flex:1;min-width:0"><div class="nm">${esc(c.nombre)}${rcTxt ? ` <span class="chip ac">🕒 ${esc(rcTxt)}</span>` : ''}</div><div class="small muted">${numsTxt(ps)} · ${art} art. · ${fechaUY(ps[0].fechas.creado, 1)}${tipo === 'agencia' && c.agencia ? ' · ' + esc(c.agencia) : ''}${tipo === 'cadeteria' && c.barrio ? ' · ' + esc(c.barrio) : ''}</div>${marcas.length ? `<div class="pc-sub">${marcas.join(' ')}</div>` : ''}</div>
+          <span class="muted">›</span></div>`;
+      }).join('')}</div>`;
+  };
+  const sinPagar = todosPedidos().filter(p => p.estado === 'pendiente' && !p.cambio).length, F = UI.desp.filtro || 'todos', ver = t => F === 'todos' || F === t;
+  const fil = [['todos', 'Todos', a.cadeteria.length + a.agencia.length + a.retiro.length + a.sin_definir.length], ['cadeteria', '🚴 Cadetería', a.cadeteria.length], ['agencia', '📦 Agencias', a.agencia.length], ['retiro', '🏠 Retiros', a.retiro.length]]
+    .map(([t, txt, n]) => `<button class="b${F === t ? ' on' : ''}" data-act="despFiltro" data-t="${t}"><b>${n}</b>${txt}</button>`).join('');
+  let h = (ver('cadeteria') ? grupo('cadeteria', '🚴 Pagados para armar · Cadetería') : '') + (ver('agencia') ? grupo('agencia', '📦 Pagados para armar · Agencias') : '')
+    + (ver('retiro') ? grupo('retiro', '🏠 Para retirar', 'Por orden de horario que dijeron: las que pasan antes, arriba. Las que no dijeron hora, al final.') : '')
+    + (F === 'todos' ? grupo('sin_definir', '❓ Pagados sin entrega definida', 'Tocá el cliente y elegí cómo sale.') : '');
+  if (!h) h = '<div class="empty">No hay pedidos pagados esperando salir 🎉</div>';
+  h = `<div class="row mb" style="justify-content:flex-end"><button class="b sm" data-act="tab" data-t="pagos">📊 Pagos del día</button></div><div class="dsp-fil">${fil}</div>` + h;
+  if (sinPagar) h += `<div class="small muted" style="margin:-4px 2px 12px">⏳ ${sinPagar} pedido${sinPagar > 1 ? 's' : ''} todavía sin pagar.</div>`;
+  // Subpestañas (28/10): cada cosa en su pantalla, sin bajar hasta el final
+  const nArmar = a.cadeteria.length + a.agencia.length + a.retiro.length + a.sin_definir.length;
+  const nLib = typeof paraLiberar === 'function' ? paraLiberar().length : 0, nHoy = paquetesDeHoy().length;
+  let V = UI.desp.vista || 'armar'; if (V === 'liberar' && typeof liberarHTML !== 'function') V = 'armar';
+  const vs = [['armar', '📦 Para armar', nArmar], ['liberar', '⏳ Para liberar', nLib], ['hoy', '🚚 Salió hoy', nHoy]]
+    .map(([k, txt, n]) => `<button class="b${V === k ? ' on' : ''}${k === 'liberar' && n ? ' warn' : ''}" data-act="despVista" data-v="${k}"><b>${n}</b>${txt}</button>`).join('');
+  const pes = `<div class="dsp-fil dsp-vistas">${vs}</div>`;
+  if (V === 'liberar') return pes + liberarHTML();
+  if (V === 'hoy') return pes + (hoyHTML() || '<div class="empty">Todavía no salió nada hoy</div>');
+  return pes + h;
+}
+function paquetesDeHoy() {
+  const hoy = hoyISO();
+  return (DB.paquetes || []).filter(k => localISO(new Date(k.fecha)) === hoy).sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+function hoyHTML() {
+  // Pestañas propias de "Salió hoy" (27/10): tocar Cadetería / Agencias / Retiros muestra solo eso. Si no se eligió, sigue el filtro de arriba.
+  const todos = paquetesDeHoy(); if (!todos.length) return '';
+  const F = UI.desp.filtroHoy || UI.desp.filtro || 'todos', ks = todos.filter(k => F === 'todos' || k.tipo === F);
+  const n = t => todos.filter(k => k.tipo === t).length, cad = ks.filter(k => k.tipo === 'cadeteria').length;
+  const hora = iso => { const d = new Date(iso); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
+  const ico = { retiro: '🏠', agencia: '📦', cadeteria: '🚴' };
+  const pes = [['todos', 'Todo', todos.length], ['cadeteria', '🚴 Cadetería', n('cadeteria')], ['agencia', '📦 Agencias', n('agencia')], ['retiro', '🏠 Retiros', n('retiro')]]
+    .map(([t, txt, c]) => `<button class="b${F === t ? ' on' : ''}" data-act="despFiltroHoy" data-t="${t}"${c || t === 'todos' ? '' : ' disabled'}><b>${c}</b>${txt}</button>`).join('');
+  return `<div class="card"><div class="card-t">Salió hoy</div><div class="dsp-fil">${pes}</div>
+    ${ks.length ? '' : '<div class="empty">Nada de esto salió hoy</div>'}
+    ${cad ? `<div class="row mb">${grisalConectado() ? `<button class="b sm pri" data-act="despGrisalPasar">🚴 Pasar a Grisal${grisalPendientes().length ? ' (' + grisalPendientes().length + ')' : ' ✓'}</button>` : ''}<button class="b sm" data-act="despGrisal">📋 Copiar para GrisalExpress</button><button class="b sm" data-act="despHoja">🖨️ Hoja del cadete</button></div>` : ''}
+    ${ks.map(k => { const c = cliById(k.clienteId) || { nombre: '?' }; return `<div class="dsp-k"><span class="mono small muted">${hora(k.fecha)}</span><span>${ico[k.tipo]}</span><span style="flex:1;min-width:120px"><b>${esc(c.nombre)}</b> <span class="small muted">${esc(k.nums.map(x => '#' + x).join(' · '))}</span>${k.grisalCopiado ? ' <span class="chip ac">📋 copiada</span>' : ''}</span>${k.tipo !== 'retiro' ? `<button class="b sm" data-act="despPrint" data-k="${k.id}" title="Reimprimir etiqueta">🖨️</button>` : ''}<button class="b sm gh" data-act="despDeshacer" data-k="${k.id}" title="Deshacer">↩️</button></div>`; }).join('')}
+  </div>`;
+}
+
+// ── Clienta: pedidos abiertos y cómo salen ──
+function chipPago(p) {
+  if (p.cambio) return `<span class="chip ac">🔄 Cambio${p.cambio.cobrar ? ' · cobrar ' + fmt(p.cambio.cobrar) : ''}</span>`;
+  const g = p.estado === 'guardado' ? '<span class="chip gu">⏸️ Guardado</span> ' : '';
+  return g + (pagado(p) ? `<span class="chip ok">✓ Pagado${p.pago ? ' · ' + esc(p.pago.cuenta) : ''}</span>` : '<span class="chip pe">⏳ Sin pagar</span>');
+}
+function clientaHTML() {
+  const D = UI.desp, c = cliById(D.cid), m = stats(), h = m[c.id] || ST0, ab = abiertosDe(c.id);
+  for (const id of [...D.sel]) if (!ab.some(p => p.id === id)) D.sel.delete(id);
+  const alertas = [];
+  if (D.aviso) alertas.push(`<div class="alert pe">${D.aviso}</div>`);
+  // 7/11: avisos de Mabel (lo que el cliente le dijo) y cuándo pasa a retirar: arriba de todo, para verlos al cerrar
+  const rcs = [...new Set(ab.filter(p => entregaEf(p) === 'retiro').map(retiroCuandoTxt).filter(Boolean))];
+  if (rcs.length) alertas.unshift(`<div class="alert pe">🕒 Dijo que pasa a retirar: <b>${rcs.map(esc).join(' · ')}</b></div>`);
+  avisosDe(ab).reverse().forEach(t => alertas.unshift(`<div class="alert" style="background:#fff3bf;border:1px solid #e0b400;color:#5a4300;font-weight:700">📌 ${esc(t)}</div>`));
+  if (h.deudas.length) { const d = h.deudas[h.deudas.length - 1]; alertas.push(`<div class="alert li">⚠️ DEUDORA: pedido sin pagar del ${fechaUY(d.fecha)} por ${fmt(d.total)}${h.deudas.length > 1 ? ' (+' + (h.deudas.length - 1) + ' más)' : ''}</div>`); }
+  if (c.saldoFavor > 0) alertas.push(`<div class="alert ok">💰 Tiene ${fmt(c.saldoFavor)} a favor</div>`);
+  const filas = ab.map(p => {
+    const l = liveById(p.liveId) || { nombre: '?' }, t = calc(p), on = D.sel.has(p.id), ent = entregaEf(p);
+    return `<div class="dsp-p${on ? ' on' : ''}" data-act="despTog" data-id="${p.id}">
+      <span class="dsp-chk">${on ? '✓' : ''}</span><span class="num">#${p.num}</span>
+      <div class="pc-main"><div class="small"><b>${esc(l.nombre)}</b> · ${fechaUY(p.fechas.creado || l.fecha, 1)} · ${p.cambio ? p.cambio.art : t.art} art.</div>
+        <div class="pc-sub">${chipPago(p)}${ent !== 'sin_definir' ? ` <span>${ENTREGA_TXT[ent]}</span>` : ''}</div></div>
+      <div class="pc-tot">${p.cambio ? (p.cambio.cobrar ? fmt(p.cambio.cobrar) : '🔄') : fmt(t.total)}</div>
+      <button class="b sm gh" data-act="despVer" data-id="${p.id}" title="Ver detalle">👁️</button></div>`;
+  }).join('');
+  const todos = ab.length > 1 ? `<button class="b sm" data-act="despTodos">${D.sel.size === ab.length ? '☐ Ninguno' : '☑ Todos'}</button>` : '';
+  // "Más plazo" se maneja desde Despacho (30/10): sobre los tildados, o sobre todos los que pueden si no hay ninguno tildado
+  const conPlazo = typeof plazoBtnHTML === 'function' ? ab.filter(p => plazoBtnHTML(p)) : [], selPlazo = conPlazo.filter(p => D.sel.has(p.id)), usaPlazo = selPlazo.length ? selPlazo : conPlazo;
+  const btnPlazo = usaPlazo.length ? `<button class="b sm" data-act="masPlazo" data-ids="${usaPlazo.map(p => p.id).join(',')}" title="Pasa a Guardado sin pagar con fecha límite">📅 ${usaPlazo.every(p => p.guardadoSinPagar) ? 'Cambiar plazo' : 'Más plazo'}${selPlazo.length && selPlazo.length < conPlazo.length ? ' (' + selPlazo.length + ')' : ''}</button>` : '';
+  const ultimos = !ab.length ? (DB.paquetes || []).filter(k => k.clienteId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 3) : [];
+  return `<div class="card">
+      <div class="row" style="align-items:flex-start"><div class="grow" style="flex:1;min-width:0"><div class="pc-nom" style="white-space:normal">${nomAlias(c)}</div><div class="pc-sub">${histHTML(h)} ${c.tel ? '<span class="mono">' + esc(c.tel) + '</span>' : '<span class="chip pe">⚠️ sin tel</span>'}</div></div><button class="b sm gh" data-act="despCerrar" title="Volver (Esc)">✕</button></div>
+      <div class="row mt"><button class="b sm" data-act="verFicha" data-cid="${c.id}">👤 Ficha</button>${c.tel ? `<button class="b sm" data-act="waCli" data-cid="${c.id}" title="Abrir el chat vacío">💬 Chat</button>` : ''}${(() => { const u = ultimoPedidoDe(c.id); return u ? `<button class="b sm" data-act="irPedido" data-id="${u.id}">🛍️ Último pedido #${u.num} · ${esc((liveById(u.liveId) || {}).nombre || '')}</button>` : ''; })()}</div>
+      ${alertas.join('')}
+    </div>
+    <div class="list-h"><span class="t">Sin salida <span class="bdg">${ab.length}</span></span><span class="row" style="gap:6px">${btnPlazo}${todos}</span></div>
+    ${filas || `<div class="empty">No tiene pedidos sin salida</div>`}
+    ${salidasRecientesHTML(c)}
+    ${D.sel.size ? salidaHTML(c, ab.filter(p => D.sel.has(p.id))) : (ab.length ? '<div class="small muted" style="text-align:center;margin:6px 0 14px">Tildá los pedidos que salen</div>' : '')}`;
+}
+/** 10/11: salidas recientes de el cliente (últimos 14 días): cuándo se marcó, por dónde salió y con qué pago. Con ↩️ Deshacer. */
+function salidasRecientesHTML(c) {
+  const lim = Date.now() - 14 * 864e5, hh = iso => { const x = new Date(iso); return pad2(x.getHours()) + ':' + pad2(x.getMinutes()); };
+  const ks = (DB.paquetes || []).filter(k => k.clienteId === c.id && new Date(k.fecha).getTime() >= lim).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 4);
+  if (!ks.length) return '';
+  const tipoTxt = { retiro: '🏠 Entregado (retiro)', agencia: '📦 Salió por agencia', cadeteria: '🚴 Salió por cadetería' };
+  return `<div class="list-h"><span class="t">Salidas recientes <span class="bdg">${ks.length}</span></span></div>` + ks.map(k => {
+    const ps = (k.pedidos || []).map(pedById).filter(Boolean);
+    const pagos = ps.map(p => p.pago ? `#${p.num} ✓ ${esc(p.pago.cuenta)}${p.pago.fecha ? ' · pagó ' + fechaUY(localISO(new Date(p.pago.fecha)), 1) + ' ' + hh(p.pago.fecha) : ''}` : `#${p.num} ⏳ sin pago marcado`).join(' · ');
+    const extra = k.tipo === 'cadeteria' ? (k.cobro ? ' · cobra ' + fmt(k.cobro) : ' · envío pago') : k.tipo === 'agencia' && k.envio && k.envio.agencia ? ' · ' + esc(k.envio.agencia) + (k.envio.ciudad ? ' (' + esc(k.envio.ciudad) + ')' : '') : '';
+    return `<div class="card" style="margin:6px 0"><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><div style="flex:1;min-width:0"><div><b>${tipoTxt[k.tipo] || esc(k.tipo)}</b> <span class="small muted">${esc(k.nums.map(x => '#' + x).join(' · '))}</span></div>
+      <div class="small muted">Marcado el ${fechaUY(localISO(new Date(k.fecha)), 1)} a las ${hh(k.fecha)}${extra}</div><div class="small">${pagos}</div></div>
+      ${k.tipo !== 'retiro' ? `<button class="b sm" data-act="despPrint" data-k="${k.id}" title="Reimprimir etiqueta">🖨️</button>` : ''}<button class="b sm gh" data-act="despDeshacer" data-k="${k.id}" title="Deshacer la salida">↩️ Deshacer</button></div></div>`;
+  }).join('');
+}
+/** Último pedido de el cliente (cualquier estado), por fecha y número. */
+function ultimoPedidoDe(cid) {
+  return todosPedidos().filter(p => p.clienteId === cid).sort((a, b) => (b.fechas.creado || '').localeCompare(a.fechas.creado || '') || b.num - a.num)[0] || null;
+}
+function campoD(k, label, ph, extra) {
+  const v = esc(UI.desp.f[k] || '');
+  if (k === 'barrio') return `<div class="sw"><label class="lb">${label}</label><input id="dsf-${k}" data-inp="despF" data-f="${k}" data-barrio="1" autocomplete="off" value="${v}" placeholder="${esc(ph || '')}"><div class="sug"></div></div>`;
+  return `<div><label class="lb">${label}</label><input id="dsf-${k}" data-inp="despF" data-f="${k}" value="${v}" placeholder="${esc(ph || '')}" ${extra || ''}></div>`;
+}
+/** Bloque "Pagó con 2 medios": 2º medio + cuánto entró por ese medio. */
+function dosHTML(f, ctas, v) {
+  if (!f.dos) return '<div class="row mt"><button class="b sm gh" data-act="despDos">＋ Pagó con 2 medios</button></div>';
+  const bs = ctas.filter(c => c !== f.cuenta).map(cta => `<button class="b sm seg${f.cuenta2 === cta ? ' on' : ''}" data-act="despCuenta2" data-c="${esc(cta)}">${esc(cta)}</button>`).join('');
+  let h = `<div class="mt"><label class="lb">2º medio *</label><div class="row">${bs}<button class="b sm gh" data-act="despDos">✕ Quitar</button></div></div>`;
+  if (f.cuenta2) h += `<div class="row mt"><label class="small muted" for="dsf-monto2">Entró por ${esc(f.cuenta2)}</label><input id="dsf-monto2" type="number" inputmode="numeric" data-inp="despF" data-f="monto2" value="${esc(f.monto2 || '')}" placeholder="$" style="width:130px"><span class="small muted" id="dsf-dos-res">${dosResTxt(f, v)}</span></div>`;
+  return h;
+}
+function dosResTxt(f, v) {
+  if (!v || !(num(f.monto2) > 0)) return 'Poné cuánto pagó por este medio';
+  if (!v.ok) return '⚠️ Ese monto no cierra con el total';
+  return `✓ ${esc(f.cuenta)} ${fmt(v.tot1)} + ${esc(f.cuenta2)} ${fmt(v.tot2)}`;
+}
+/** Cálculo del 2º medio desde el estado del formulario (para validar sin redibujar). */
+function dosV0(porCob, t, f) {
+  const tar = +cfg('tarifaEnvio') || 0, base = porCob.reduce((s2, p) => s2 + calc(p).total, 0), env = (t === 'cadeteria' || t === 'pago') && f.conEnvio ? tar : 0;
+  return f.dos && f.cuenta && f.cuenta2 ? esperadoDos(base, env, f.cuenta, f.cuenta2, f.monto2) : null;
+}
+function salidaHTML(c, ps) {
+  const D = UI.desp, f = D.f, t = D.salida, n = ps.length;
+  const segs = SALIDAS.map(([k, txt]) => `<button class="b seg${t === k ? ' on' : ''}" data-act="despSal" data-k="${k}">${txt}</button>`).join('');
+  let form = '';
+  if (t === 'retiro') form = '<div class="small muted mt">Se entrega en mano: los pedidos quedan como entregados.</div>';
+  if (t === 'agencia') form = `<div class="grid2 mt">${campoD('agencia', 'Agencia *', 'DAC, Mirtrans…')}${campoD('nombreEnvio', 'Nombre real', c.nombre)}${campoD('ci', 'C.I.', '', 'inputmode="numeric"')}${campoD('ciudad', 'Ciudad *')}${campoD('depto', 'Departamento')}${campoD('direccion', 'Dirección (opcional)')}</div>`;
+  if (t === 'cadeteria') {
+    const b = (fk, v, txt) => `<button class="b sm seg${f[fk] === v ? ' on' : ''}" data-act="despFv" data-f="${fk}" data-v="${v}">${txt}</button>`;
+    form = `<div class="mt">${campoD('nombreEnvio', 'Nombre para la etiqueta (opcional)', 'Si queda vacío va ' + c.nombre)}</div>
+      <div class="grid2 mt">${campoD('direccion', 'Dirección *', 'Calle, número, apto')}${campoD('barrio', 'Barrio (opcional)', 'Escribí y elegí de la lista')}</div>
+      <div class="mt">${campoD('notaCadete', 'Nota para el cadete (opcional)', 'Horario, referencia…')}</div>
+      <label class="lb mt">Tipo de envío</label><div class="row">${b('tipo', 'comun', '📦 Común')}${b('tipo', 'cambio', '🔄 Cambio')}</div>
+      <label class="lb mt">Cobro del envío *</label><div class="row">${b('cobro', 'cobrar', 'Cobrar ' + fmt(cfg('tarifaEnvio')))}${b('cobro', 'pago', '✓ Envío pago')}${b('cobro', 'monto', '✏️ Otro monto')}<button class="b sm" data-act="despCobraTodo" title="El cliente le paga todo al cadete (pedido + envío + extra de cobro). Lo autoriza el equipo.">💵 Cobra todo (+${fmt(extraCobroCadete())})</button>${f.cobro === 'monto' ? `<input id="dsf-monto" type="number" inputmode="numeric" data-inp="despF" data-f="monto" value="${esc(f.monto || '')}" placeholder="$ total" style="width:110px">` : ''}</div>`;
+  }
+  if (t === 'guardado') form = '<div class="small muted mt">Si no elegís nada abajo, quedan guardados con el plazo normal de 30 días (pestaña Guardados). Si ya pagó, marcá el pago; si todavía no, elegí "Sin pagar · con plazo".</div>';
+  if (t === 'liberado') form = '<div class="alert li">La ropa vuelve al stock y el pedido cuenta como ❌ (queda como deuda en la ficha).</div>';
+  if (t === 'pago') form = '<div class="small muted mt">Marca el pago sin despachar (para hacerlo desde el celular cuando llega el comprobante). Al despachar en la compu ya figura pagado.</div>';
+  // Pago: se marca acá mismo, junto con la salida
+  const conP = conPago(t) || t === 'guardado';
+  const porCob = conP ? ps.filter(porCobrar) : [];
+  const yaPag = conP ? ps.filter(p => p.pago) : [];
+  let pago = '';
+  if (yaPag.length) pago += `<div class="small mt" style="color:var(--ok)">✓ Ya pagó: ${yaPag.map(p => '#' + p.num + ' (' + esc(p.pago.cuenta) + (p.pago.conEnvio ? ', con envío' : '') + ')').join(' · ')}</div>`;
+  if (porCob.length) {
+    const tar = +cfg('tarifaEnvio') || 0, base = porCob.reduce((s2, p) => s2 + calc(p).total, 0), env = (t === 'cadeteria' || t === 'pago') && f.conEnvio ? tar : 0, esp = esperadoDe(base, env, f.cuenta), dosV = f.dos && f.cuenta2 ? esperadoDos(base, env, f.cuenta, f.cuenta2, f.monto2) : null, auto = dosV && dosV.ok ? dosV.tot1 : esp.total;
+    const ctas = cuentasPago(), extra = f.cuenta && f.cuenta !== 'sin' && !ctas.includes(f.cuenta) ? [f.cuenta] : [];
+    pago += `<label class="lb mt">¿Cómo pagó${porCob.length < ps.length ? ' ' + numsTxt(porCob) : ''}? *</label>
+      <div class="row">${ctas.concat(extra).map(cta => `<button class="b sm seg${f.cuenta === cta ? ' on' : ''}" data-act="despCuenta" data-c="${esc(cta)}">${esc(cta)}</button>`).join('')}<button class="b sm gh" data-act="despCuenta" data-c="">Otra…</button>${t === 'pago' ? '' : `<button class="b sm seg${f.cuenta === 'sin' ? ' on' : ''}" data-act="despCuenta" data-c="sin">${t === 'guardado' ? '⏳ Sin pagar · con plazo' : 'Sin confirmar'}</button>`}</div>`;
+    if (t === 'cadeteria' || t === 'pago') pago += `<div class="row mt"><button class="b sm seg${f.conEnvio ? ' on' : ''}" data-act="despConEnvio">${f.conEnvio ? '✓' : '＋'} La transferencia incluye el envío de cadetería (${fmt(tar)})</button></div>`;
+    if (f.cuenta && f.cuenta !== 'sin') pago += `<div class="row mt"><label class="small muted" for="dsf-transf">${f.dos ? 'Entró por ' + esc(f.cuenta) : 'Monto transferido'}</label><input id="dsf-transf" type="number" inputmode="numeric" data-inp="despF" data-f="transf" value="${esc(f.transfEdit ? f.transf : String(auto))}" style="width:130px"><span class="small muted">${dosV && dosV.ok ? 'su parte ' + fmt(dosV.part1) : 'pedido ' + fmt(base)}${env ? ' + envío ' + fmt(env) : ''}${(dosV && dosV.ok ? dosV.rec1 : esp.rec) ? ' + Mercado Pago ' + recargoMP() + '% ' + fmt(dosV && dosV.ok ? dosV.rec1 : esp.rec) : ''}</span></div>`;
+    if (f.cuenta && f.cuenta !== 'sin') pago += dosHTML(f, ctas, dosV);
+    if (f.cuenta === 'sin' && t === 'guardado') { const plz = f.plazo || sumarDias(hoyISO(), 3); pago += `<div class="row mt"><label class="small muted" for="dsf-plazo">Guardado sin pagar hasta</label><input type="date" id="dsf-plazo" min="${hoyISO()}" data-inp="despF" data-f="plazo" value="${esc(plz)}" style="width:auto"><button class="b sm" data-act="despPlazo" data-d="3">+3 días</button><button class="b sm" data-act="despPlazo" data-d="7">+7 días</button></div><div class="small muted mt">No recibe recordatorios. Al vencer aparece en "Para liberar" para que decidas vos.</div>`; }
+    else if (f.cuenta === 'sin') pago += '<div class="small muted mt">Sale sin pago marcado: queda anotado en el paquete.</div>';
+  }
+  if (t === 'pago' && !porCob.length) pago += '<div class="small muted mt">Los pedidos tildados ya tienen el pago marcado.</div>';
+  const bloqueado = !t || (porCob.length && !f.cuenta && t !== 'guardado') || (porCob.length && f.cuenta !== 'sin' && f.dos && !(f.cuenta2 && (dosV0(porCob, t, f) || {}).ok)) || (t === 'pago' && (!porCob.length || f.cuenta === 'sin'));
+  const cobro = t === 'cadeteria' ? (f.cobro === 'pago' ? ' · envío pago' : f.cobro === 'monto' ? (num(f.monto) > 0 ? ' · cobra ' + fmt(num(f.monto)) : '') : f.cobro === 'cobrar' ? ' · cobra ' + fmt(cfg('tarifaEnvio')) : '') : '';
+  const txt = !t ? 'Elegí cómo sale' : { retiro: `✓ Entregar ${n > 1 ? n + ' pedidos' : 'el pedido'}`, agencia: `📦 Despachar por agencia${n > 1 ? ' · ' + n + ' pedidos, 1 etiqueta' : ''}`, cadeteria: `🚴 Despachar por cadetería${cobro}`, guardado: porCob.length && f.cuenta === 'sin' ? `⏸️ Guardar sin pagar hasta el ${fechaUY(f.plazo || sumarDias(hoyISO(), 3), 1)}` : porCob.length && f.cuenta ? `⏸️ Guardar y marcar pago · ${esc(f.cuenta)}` : `⏸️ Guardar ${n > 1 ? n + ' pedidos' : 'el pedido'}`, liberado: `❌ Liberar ${n > 1 ? n + ' pedidos' : 'el pedido'}`, pago: '💸 Marcar pago' }[t];
+  return `<div class="card dsp-sal"><div class="card-t">${t === 'pago' ? 'Pago' : '¿Cómo sale' + (n > 1 ? 'n' : '') + '?'} · ${numsTxt(ps)}</div>
+    <div class="dsp-segs">${segs}</div>${form}${pago}
+    <button class="b ${t === 'liberado' ? 'dan' : 'ok'} lg blk mt" id="dsp-go" data-act="despGo"${bloqueado ? ' disabled' : ''}>${txt}</button></div>`;
+}
+
+// ─── Acciones ─────────────────────────────────────────────────
+/** Abre el cliente. ids = pedidos a tildar; tipo = salida sugerida. */
+function abrirClientaDesp(cid, ids, tipo) {
+  const D = UI.desp, ab = abiertosDe(cid);
+  D.cid = cid; D.sinPago = false; D.aviso = '';
+  D.sel = new Set(ids ? ids.filter(id => ab.some(p => p.id === id)) : ab.length === 1 ? [ab[0].id] : []);
+  if (ids && ab.length > D.sel.size) { const otros = ab.filter(p => !D.sel.has(p.id)); D.aviso = `🔗 Tiene ${otros.length > 1 ? otros.length + ' pedidos más abiertos' : 'otro pedido abierto'}: ${numsTxt(otros)}. Tildalos si van juntos.`; }
+  if (!tipo && D.sel.size) { const ts = new Set([...D.sel].map(id => entregaEf(pedById(id)))); if (ts.size === 1) tipo = [...ts][0]; }
+  elegirSalida(ENVIOS.has(tipo) ? tipo : null);
+  if (esTactil() && D.sel.size && [...D.sel].map(pedById).some(p => p && porCobrar(p))) D.salida = 'pago';
+  D.q = ''; const q = $('#dsp-q'); if (q) q.value = '';
+  cerrarSug();
+  render();
+  window.scrollTo(0, 0);
+}
+function elegirSalida(t) {
+  const D = UI.desp, c = cliById(D.cid) || {}, ps = [...D.sel].map(pedById).filter(Boolean);
+  D.salida = t;
+  const m = ps.length ? principal(ps) : null;
+  D.f = { agencia: c.agencia || '', nombreEnvio: c.nombreEnvio || '', ci: c.ci || '', ciudad: c.ciudad || '', depto: c.depto || '', direccion: c.direccion || '', barrio: c.barrio || '', notaCadete: c.notaCadete || '',
+    tipo: ps.some(p => tipoEnvioDe(p) === 'cambio') ? 'cambio' : 'comun',
+    cobro: m && m.cobroEnvio && m.entrega === 'cadeteria' ? m.cobroEnvio : null, monto: m && m.cobroMonto ? String(m.cobroMonto) : '',
+    cuenta: (D.f && D.f.cuenta) || null, plazo: '', dos: !!(D.f && D.f.dos), cuenta2: (D.f && D.f.cuenta2) || null, monto2: (D.f && D.f.monto2) || '', conEnvio: false, transf: '', transfEdit: false };
+}
+function cerrarClientaDesp() { const D = UI.desp; D.cid = null; D.sel = new Set(); D.salida = null; D.f = {}; D.aviso = ''; D.sinPago = false; }
+function focoBuscar() { setTimeout(() => { const q = $('#dsp-q'); if (q && UI.tab === 'despacho') q.focus(); }, 30); }
+
+/** Crea el paquete, pasa los pedidos a enviado y guarda todo. Devuelve el paquete. */
+function crearPaquete(c, ps, tipo, f, sinPago) {
+  const m = principal(ps);
+  const cobro = tipo === 'cadeteria' ? (f.cobro === 'pago' ? 0 : f.cobro === 'monto' ? num(f.monto) : +cfg('tarifaEnvio') || 0) : null;
+  const envio = tipo === 'agencia' ? { nombre: c.nombreEnvio || c.nombre, tel: c.tel || '', agencia: c.agencia, ci: c.ci || '', ciudad: c.ciudad || '', depto: c.depto || '', direccion: c.direccion || '' }
+    : tipo === 'cadeteria' ? { nombre: c.nombreEnvio || c.nombre, tel: c.tel || '', direccion: c.direccion || '', barrio: c.barrio || '', nota: c.notaCadete || '' }
+    : { nombre: c.nombre, tel: c.tel || '' };
+  const k = { id: uid('k'), tipo, fecha: ahoraISO(), pedidos: ps.map(p => p.id), nums: ps.map(p => p.num), clienteId: c.id, principal: m.id, codigo: m.codigo,
+    cobro, tipoEnvio: tipo === 'cadeteria' ? (f.tipo || 'comun') : null, envio, sinPago: sinPago || [], grisalOrden: null,
+    antes: ps.map(p => ({ id: p.id, estado: p.estado, entrega: p.entrega || 'sin_definir', cobroEnvio: p.cobroEnvio ?? null, cobroMonto: p.cobroMonto ?? 0, tipoEnvio: p.tipoEnvio ?? null, fechas: Object.assign({}, p.fechas) })) };
+  for (const p of ps) {
+    p.entrega = tipo;
+    if (tipo === 'cadeteria') { p.cobroEnvio = f.cobro; p.cobroMonto = f.cobro === 'monto' ? num(f.monto) : 0; p.tipoEnvio = k.tipoEnvio; }
+    setEstado(p, 'enviado');
+    p.salida = { id: k.id, ts: k.fecha, tipo };
+    p.paqueteId = k.id;
+    if (p !== m) p.salioCon = m.id; else delete p.salioCon;
+  }
+  DB.paquetes.push(k);
+  savePaquetes(); guardar();
+  return k;
+}
+/** Marca el pago de estos pedidos con la cuenta elegida. El pedido más nuevo lleva el envío (si la transferencia lo incluye)
+ *  y la diferencia con lo calculado, así la suma da lo transferido. */
+function registrarPagos(ps, f, conEnvio, paquete) {
+  const tar = +cfg('tarifaEnvio') || 0, env = conEnvio ? tar : 0;
+  const base = ps.reduce((s2, p) => s2 + calc(p).total, 0);
+  let dos = f.cuenta2 && f.cuenta2 !== f.cuenta && num(f.monto2) > 0 ? esperadoDos(base, env, f.cuenta, f.cuenta2, f.monto2) : null;
+  if (dos && !dos.ok) dos = null;
+  const esp = dos ? { rec: dos.rec1, total: dos.tot1 } : esperadoDe(base, env, f.cuenta);
+  const transf = f.transfEdit || f.transf !== undefined && f.transf !== '' && f.origen === 'mabel' ? num(f.transf) : esp.total;
+  const orden = [...ps].sort((a, b) => (a.fechas.creado || '').localeCompare(b.fechas.creado || '') || a.num - b.num);
+  const gs = orden.map(p => marcarPago(p, f.cuenta, f.origen || (paquete ? 'despacho' : 'pago')));
+  const g0 = gs[gs.length - 1];
+  const extra = [];
+  if (dos) {
+    // Reparte: lo que pagó por el 2º medio se saca de las filas, de la última hacia atrás (el envío entra en la última fila)
+    const splitId = uid('s');
+    g0.monto = (+g0.monto || 0) + env;
+    let falta = dos.part2;
+    for (const g of [...gs].reverse()) {
+      if (falta <= 0) break;
+      const m = Math.min(falta, +g.monto || 0); if (m <= 0) continue;
+      const h = { id: uid('g'), pedidoId: g.pedidoId, clienteId: g.clienteId, cuenta: f.cuenta2, medio: medioDe(f.cuenta2), monto: m, fecha: g.fecha, origen: g.origen, antes: g.antes, splitId };
+      g.monto -= m; falta -= m; DB.pagos.push(h); extra.push(h);
+    }
+    if (extra[0]) extra[0].monto += dos.rec2;
+    gs.forEach(g => { g.splitId = splitId; });
+    orden.forEach(p => { p.pago.cuenta = f.cuenta + ' + ' + f.cuenta2; });
+    g0.envio = env; g0.recargo = dos.rec; g0.esperado = dos.total; g0.ajuste = transf - dos.tot1; g0.monto = (+g0.monto || 0) + dos.rec1 + g0.ajuste;
+  } else {
+    // envio = lo que incluye de cadetería · recargo = Mercado Pago · ajuste = diferencia contra lo esperado · monto = lo realmente transferido (sumando las filas)
+    g0.envio = env; g0.recargo = esp.rec; g0.esperado = esp.total; g0.ajuste = transf - esp.total; g0.monto = (+g0.monto || 0) + env + esp.rec + g0.ajuste;
+  }
+  if (f.nota) g0.nota = String(f.nota).slice(0, 200);
+  gs.push(...extra);
+  if (f.cobroId) gs.forEach(g => { g.cobroId = f.cobroId; });
+  if (f.comprobante) g0.comprobante = f.comprobante;
+  if (paquete) gs.forEach(g => { g.paqueteId = paquete.id; });
+  if (conEnvio && !paquete) orden.forEach(p => { p.pago.conEnvio = true; p.entrega = 'cadeteria'; p.cobroEnvio = 'pago'; p.cobroMonto = 0; }); // pagó el envío de cadetería: sale por cadetería
+  savePagos(); guardar();
+  return gs;
+}
+function despGo() {
+  const D = UI.desp, c = cliById(D.cid), t = D.salida, f = D.f;
+  const ps = [...D.sel].map(pedById).filter(p => p && sinSalir(p));
+  if (!c || !ps.length || !t) return;
+  if (t === 'guardado' || t === 'liberado') {
+    if (t === 'liberado' && !confirm(`¿Liberar ${numsTxt(ps)} de ${c.nombre}?\n\nLa ropa vuelve al stock y queda como deuda en la ficha.`)) return;
+    let extra = '', gsId = [];
+    if (t === 'guardado') {
+      const pc = ps.filter(porCobrar);
+      if (pc.length && f.cuenta && f.cuenta !== 'sin') { gsId = registrarPagos(pc, f, false, null).map(g => g.id); extra = ' · pagó por ' + esc(f.cuenta) + (f.dos && f.cuenta2 ? ' + ' + esc(f.cuenta2) : ''); }
+      if (pc.length && f.cuenta === 'sin') { const hasta = f.plazo || sumarDias(hoyISO(), 3); if (hasta < hoyISO()) return toast('La fecha ya pasó'); aplicarPlazo(pc.map(p => p.id), hasta); extra = ' · sin pagar hasta el ' + fechaUY(hasta, 1); }
+    }
+    ps.filter(p => p.estado !== t).forEach(p => setEstado(p, t));
+    guardar();
+    D.res = t === 'guardado' ? { cls: 'mu', html: `⏸️ Guardado${ps.length > 1 ? 's' : ''} ${numsTxt(ps)} · ${esc(c.nombre)}${extra}`, cid: c.id, pagos: gsId } : { cls: 'li', html: `❌ Liberado${ps.length > 1 ? 's' : ''} ${numsTxt(ps)} · ${esc(c.nombre)}`, cid: c.id };
+    cerrarClientaDesp(); render(); focoBuscar(); return;
+  }
+  const porCob = ps.filter(porCobrar);
+  if (t === 'pago') {
+    if (!porCob.length || !f.cuenta || f.cuenta === 'sin') return toast('Elegí la cuenta');
+    const gs = registrarPagos(porCob, f, f.conEnvio);
+    const tot = gs.reduce((s2, g) => s2 + (+g.monto || 0), 0);
+    D.res = { cls: 'ok', html: `💸 ${esc(c.nombre)} pagó ${fmt(tot)}<div style="font-size:15px;margin-top:4px">${numsTxt(porCob)} · ${esc(f.cuenta)}${f.dos && f.cuenta2 ? ' + ' + esc(f.cuenta2) : ''}${f.conEnvio ? ' · con envío' : ''}</div>`, cid: c.id, pagos: gs.map(g => g.id) };
+    cerrarClientaDesp(); render(); focoBuscar(); window.scrollTo(0, 0); return;
+  }
+  if (porCob.length && !f.cuenta) return toast('Elegí cómo pagó (o "Sin confirmar") antes de despachar');
+  if (t === 'agencia') {
+    const falta = []; if (!String(f.agencia || '').trim()) falta.push('la agencia'); if (!String(f.ciudad || '').trim()) falta.push('la ciudad');
+    if (falta.length) return alert('⚠️ No salió.\n\nFalta cargar ' + falta.join(' y ') + '.');
+    editarClienta(c, { agencia: f.agencia, nombreEnvio: f.nombreEnvio, ci: f.ci, ciudad: f.ciudad, depto: f.depto, direccion: f.direccion });
+  }
+  if (t === 'cadeteria') {
+    const falta = faltaCadeteria(f.direccion, f.cobro, f.monto);
+    if (falta.length) return alert('⚠️ No salió.\n\nFalta cargar ' + falta.join(' y ') + '.');
+    if (f.barrio && !barrioCanon(f.barrio)) return alert('⚠️ "' + f.barrio + '" no está en la lista de barrios de GrisalExpress.\n\nElegilo de las sugerencias o dejalo vacío.');
+    editarClienta(c, { nombreEnvio: f.nombreEnvio, direccion: f.direccion, barrio: f.barrio, notaCadete: f.notaCadete });
+  }
+  const k = crearPaquete(c, ps, t, f, f.cuenta === 'sin' ? porCob.map(p => p.id) : []);
+  if (porCob.length && f.cuenta !== 'sin') {
+    const gs = registrarPagos(porCob, f, t === 'cadeteria' && f.conEnvio, k);
+    k.pagos = gs.map(g => g.id); k.transferido = gs.reduce((s2, g) => s2 + (+g.monto || 0), 0); k.cuenta = f.dos && f.cuenta2 ? f.cuenta + ' + ' + f.cuenta2 : f.cuenta;
+    savePaquetes();
+  }
+  D.res = { paqId: k.id };
+  cerrarClientaDesp(); render();
+  if (t === 'retiro') focoBuscar(); else setTimeout(() => { const b = $('#dsp-print'); if (b) b.focus(); }, 30);
+}
+function deshacerPaquete(id) {
+  const k = paqById(id); if (!k) return;
+  const c = cliById(k.clienteId) || { nombre: '?' };
+  if (!confirm(`¿Deshacer la salida de ${c.nombre} (${k.nums.map(n => '#' + n).join(' · ')})?\n\nLos pedidos vuelven a como estaban y se anula el pago marcado al despachar.`)) return;
+  (k.pagos || []).forEach(anularPago);
+  if ((k.pagos || []).length) savePagos();
+  for (const a of k.antes || []) {
+    const p = pedById(a.id); if (!p || p.paqueteId !== k.id) continue;
+    setEstado(p, a.estado);
+    p.entrega = a.entrega; p.cobroEnvio = a.cobroEnvio; p.cobroMonto = a.cobroMonto;
+    if (a.tipoEnvio == null) delete p.tipoEnvio; else p.tipoEnvio = a.tipoEnvio;
+    p.fechas = Object.assign({}, a.fechas);
+    delete p.salida; delete p.paqueteId; delete p.salioCon;
+  }
+  DB.paquetes = DB.paquetes.filter(x => x.id !== id);
+  savePaquetes(); guardar();
+  UI.desp.res = { cls: 'mu', html: `↩️ Se deshizo la salida de ${esc(c.nombre)}`, cid: c.id };
+  render();
+}
+/** Una etiqueta por paquete: la del pedido principal, con el número y los artículos de todo el paquete. */
+function etqPaqueteHTML(k) {
+  const ps = k.pedidos.map(pedById).filter(Boolean), m = pedById(k.principal) || ps[0];
+  if (!m) return '';
+  const v = Object.assign({}, m, { num: ps.length > 1 ? ps.map(p => p.num).join('+') : m.num, prendas: ps.flatMap(p => p.prendas || []) });
+  if (!ps.every(p => p.cambio)) v.cambio = null;
+  if (k.tipo === 'cadeteria') { v.cobroEnvio = k.cobro ? 'monto' : 'pago'; v.cobroMonto = k.cobro || 0; v.tipoEnvio = k.tipoEnvio || 'comun'; return etqCadeteHTML(v); }
+  if (k.tipo === 'agencia') return etqAgenciaHTML(Object.assign({}, cliById(k.clienteId) || {}, k.envio || {}));
+  return etqHTML(v);
+}
+/** Etiqueta 10×15 de agencia (diseño aprobado el 29/10): nombre de la marca grande, MONTEVIDEO, Tel y RUT del negocio, destinatario, datos con
+ *  íconos (el pin va una sola vez: ciudad + departamento si es distinto; dirección solo si hay) y abajo SOLO el nombre de la agencia.
+ *  Medidas en "px del diseño" (1024×1536); ETQ_U las pasa a mm. Sin QR, sin número ni artículos. */
+const ETQ_U = 0.096639;
+const _eu = n => (n * ETQ_U).toFixed(3) + 'mm';
+function etqAncho(txt, peso, px) {
+  try {
+    if (document.fonts && document.fonts.check(peso + ' 100px Poppins')) {
+      const cv = etqAncho.cv || (etqAncho.cv = document.createElement('canvas').getContext('2d'));
+      cv.font = peso + ' ' + px + 'px Poppins';
+      return cv.measureText(txt).width;
+    }
+  } catch (e) { /* cae al cálculo aproximado */ }
+  return txt.length * px * (peso >= 700 ? 0.72 : 0.68);
+}
+function etqFit(txt, peso, max, maxW) { const w = etqAncho(txt, peso, max); return w > maxW ? max * maxW / w : max; }
+function etqNombre2(nombre) {
+  const ws = String(nombre || '').trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (ws.length <= 1) return [ws.join(' ')];
+  let best = [ws.join(' ')], bd = 1e9;
+  for (let i = 1; i < ws.length; i++) {
+    const a = ws.slice(0, i).join(' '), b = ws.slice(i).join(' '), d = Math.abs(a.length - b.length);
+    if (d < bd) { bd = d; best = [a, b]; }
+  }
+  return best;
+}
+function etqAgenciaHTML(d) {
+  const ciudad = String(d.ciudad || '').trim(), depto = String(d.depto || '').trim();
+  let ub = ciudad;
+  if (depto && depto.toLowerCase() !== ciudad.toLowerCase()) ub = ciudad ? ciudad + ', ' + depto : depto;
+  ub = (ub || '________').toUpperCase();
+  const lineas = etqNombre2(d.nombre || d.nombreEnvio || '');
+  const nomS = Math.min(128, ...lineas.map(l => etqFit(l || ' ', 700, 128, 830)));
+  const nomL = nomS * 0.7 + 30;
+  const dir = String(d.direccion || '').trim(), conDir = !!dir, pitch = conDir ? 80 : 98;
+  const ubS = etqFit(ub, 400, 54, 730);
+  const ag = String(d.agencia || '________').toUpperCase();
+  const agS = etqFit(ag, 700, 128, 740);
+  const telRut = 'Tel ' + negocio('tel') + '  ·  RUT ' + negocio('rut');
+  const conS = etqFit(telRut, 500, 34, 672);
+  const im = k => `<img src="${ETQ_IMG[k].src}" style="width:${_eu(ETQ_IMG[k].w)};height:${_eu(ETQ_IMG[k].h)}" alt="">`;
+  const fila = (k, txt, sz) => `<div class="ag2-r" style="height:${_eu(pitch)}"><div class="ag2-ic">${im(k)}</div><div class="ag2-rt" style="font-size:${_eu(sz)}">${esc(txt)}</div></div>`;
+  return `<div class="lbl ag2"><div class="ag2-in">
+    <div class="ag2-c" style="top:${_eu(74)};font-size:${_eu(etqFit(negocio('marca'), 900, 150, 760))};font-weight:900;letter-spacing:-.02em;line-height:1">${esc(negocio('marca'))}</div>
+    <div class="ag2-c" style="top:${_eu(257.3)};font-size:${_eu(98)};font-weight:500;letter-spacing:.08em">MONTEVIDEO</div>
+    <div class="ag2-c" style="top:${_eu(361.1)};font-size:${_eu(conS)};font-weight:500">${esc(telRut)}</div>
+    <div class="ag2-hr" style="left:${_eu(72)};top:${_eu(434)};width:${_eu(347)}"></div>
+    <div class="ag2-hr" style="left:${_eu(533)};top:${_eu(434)};width:${_eu(347)}"></div>
+    <div class="ag2-c" style="top:${_eu(436 - 30)};font-size:${_eu(48)};font-weight:900">YF</div>
+    <div class="ag2-fl">
+      <div class="ag2-lab">DESTINATARIO</div>
+      <div class="ag2-nom" style="font-size:${_eu(nomS)};line-height:${_eu(nomL)}">${lineas.map(l => esc(l)).join('<br>')}</div>
+      <div style="margin-top:${_eu(conDir ? 19 : 45)}">
+        ${fila('person', 'C.I. ' + (d.ci || '________'), 54)}
+        ${fila('phone', 'Tel  ' + (d.tel || '________'), 54)}
+        ${fila('pin', ub, ubS)}
+        ${conDir ? `<div class="ag2-dir">${esc(dir)}</div>` : ''}
+      </div>
+    </div>
+    <div class="ag2-box" style="font-size:${_eu(agS)}">${esc(ag)}</div>
+  </div></div>`;
+}
+// En hoja A4, cada etiqueta de agencia sale sola en su hoja, con el mismo tamaño y diseño que la térmica 10×15
+const _hojasHTMLbase = hojasHTML;
+hojasHTML = function (etiquetas) {
+  if (impEnviosTermica()) return _hojasHTMLbase(etiquetas);
+  const sola = e => e.includes('lbl ag2') || e.includes('lbl grs'), ag = etiquetas.filter(sola), resto = etiquetas.filter(e => !sola(e));
+  return (resto.length ? _hojasHTMLbase(resto) : '') + ag.map(e => `<div class="sheet-t a4ag">${e}</div>`).join('');
+};
+// Etiqueta de pedido con agencia (desde Pedidos): el mismo diseño nuevo
+const _etqHTMLbase = etqHTML;
+etqHTML = function (p) {
+  const c = cliById(p.clienteId);
+  return c && c.agencia ? etqAgenciaHTML(Object.assign({}, c, { nombre: c.nombreEnvio || c.nombre })) : _etqHTMLbase(p).replace(`<div class="l-num">#${p.num}</div>`, `<div class="l-num">#${p.num}${otrosAbiertosMarca(p)}</div>`);
+};
+async function imprimirPaquete(id) {
+  const k = paqById(id); if (!k) return;
+  // Cadetería con Grisal conectado: primero pasa la fila a la planilla (si no está) y después imprime SU etiqueta, con el QR que lee el cadete
+  if (k.tipo === 'cadeteria' && grisalConectado()) {
+    if (!k.grisalEnviado && !k.grisalCopiado) { const ok = await pasarAGrisal([k]); if (!ok) return; }
+    if (k.grisalOrden) return imprimir(hojasHTML([etqGrisalHTML(k)]), 'etiquetas');
+  }
+  imprimir(hojasHTML([etqPaqueteHTML(k)]), 'etiquetas');
+}
+// ── GrisalExpress: filas de los paquetes de cadetería de hoy, listas para pegar ──
+async function copiarGrisalHoy() {
+  const ks = paquetesDeHoy().filter(k => k.tipo === 'cadeteria').reverse();
+  if (!ks.length) return toast('Hoy no salió nada por cadetería');
+  let usar = ks.filter(k => !k.grisalCopiado);
+  if (!usar.length) { if (!confirm(`Las ${ks.length} de hoy ya se copiaron. ¿Copiarlas todas de nuevo?`)) return; usar = ks; }
+  const [y, mo, d] = hoyISO().split('-'), fecha = d + '/' + mo + '/' + y.slice(2);
+  const filas = usar.map(k => {
+    const c = cliById(k.clienteId) || {}, e = k.envio || {};
+    return ['', k.tipoEnvio === 'cambio' ? 'Cambio' : 'Común', e.nombre || c.nombreEnvio || c.nombre || '', telLegible(e.tel || c.tel), e.direccion || c.direccion || '', e.barrio || c.barrio || '', k.cobro || 0, 'Paquete chico', fecha, e.nota || c.notaCadete || ''].map(limpioTSV);
+  });
+  const txt = filas.map(f => f.join('\t')).join('\n');
+  const ok = await copiarTexto(txt);
+  if (!ok) showModal(`<h3>📋 Copiá a mano</h3><p class="small muted mb">El navegador no dejó copiar solo. Seleccioná todo y copiá:</p><textarea style="min-height:200px;font-family:var(--mono);font-size:12px" onfocus="this.select()">${esc(txt)}</textarea><div class="row mt"><span class="grow"></span><button class="b pri" data-act="closeModal">Listo</button></div>`);
+  const ts = ahoraISO(); usar.forEach(k => { k.grisalCopiado = ts; });
+  savePaquetes();
+  if (ok) toast(`📋 ${filas.length} fila${filas.length > 1 ? 's' : ''} copiada${filas.length > 1 ? 's' : ''} · pegalas en la columna N Orden de GrisalExpress`, 5000);
+  render();
+}
+function hojaCadeteHoy() {
+  const ids = paquetesDeHoy().filter(k => k.tipo === 'cadeteria').reverse().flatMap(k => k.pedidos);
+  if (!ids.length) return toast('Hoy no salió nada por cadetería');
+  imprimir(hojaCadeteHTML({ escaneados: ids }, false), 'hoja');
+}
+function verPedidoDesp(id) {
+  const p = pedById(id); if (!p) return;
+  const c = cliById(p.clienteId) || { nombre: '?' }, l = liveById(p.liveId) || { nombre: '?' }, t = calc(p);
+  const cuerpo = p.cambio
+    ? `<div class="box small"><div>⬅️ <b>Entró:</b> ${esc(p.cambio.entra.join(', ') || '—')}</div><div style="margin-top:4px">➡️ <b>Sale:</b> ${esc(p.cambio.sale.join(', ') || '—')}</div></div>`
+    : (p.prendas.length ? p.prendas.map(pr => `<div class="pr"><div class="pr-n">${esc(pr.nombre)}${pr.codigo ? '<small>' + esc(pr.codigo) + '</small>' : ''}</div><span class="mono">x${pr.qty || 1}</span><div class="pr-p">${precioHTML(pr)}</div></div>`).join('') : '<div class="small muted">Sin prendas</div>')
+      + (typeof descLineasHTML === 'function' ? descLineasHTML(t) : t.descMonto ? `<div class="tot-l" style="color:var(--ac)"><span>🎉 Descuento ${t.desc}%</span><span>−${fmt(t.descMonto)}</span></div>` : '')
+      + (t.saldo ? `<div class="tot-l" style="color:var(--ok)"><span>💰 Saldo a favor</span><span>−${fmt(t.saldo)}</span></div>` : '')
+      + `<div class="tot-l big"><span>Total</span><span>${fmt(t.total)}</span></div>`;
+  showModal(`<h3>#${p.num} · ${esc(c.nombre)}</h3>
+    <div class="small muted mb">${esc(l.nombre)} · ${fechaUY(p.fechas.creado || l.fecha)} · código <span class="mono">${p.codigo}</span> · ${ESTADO_TXT[p.estado]}</div>
+    ${cuerpo}
+    ${p.pago ? `<div class="alert ok">✓ Pagó por ${esc(p.pago.cuenta)} el ${fechaUY(localISO(new Date(p.pago.fecha)))}</div>` : ''}
+    ${p.notas ? `<div class="alert pe">📝 ${esc(p.notas)}</div>` : ''}
+    <div class="row mt"><button class="b gh" data-act="irPedido" data-id="${p.id}">Abrir en Live</button><span class="grow"></span><button class="b pri" data-act="closeModal">Cerrar</button></div>`);
+}
+
+// ── Búsqueda y escaneo ──
+function cerrarSug() { const s = $('#dsp-sug'); if (s) s.classList.remove('on'); UI.desp.items = []; }
+function despSug() {
+  const D = UI.desp, q = D.q.trim(), sug = $('#dsp-sug'); if (!sug) return;
+  if (!q) return cerrarSug();
+  const items = [];
+  const dig = q.replace(/\D/g, '');
+  if (/^\d{3,6}$/.test(q)) { const p = todosPedidos().find(x => x.codigo === dig.padStart(5, '0')); if (p) items.push({ p }); }
+  if (!esGrisal(q)) {
+    const cs = buscarClientas(q).map(c => ({ c, n: abiertosDe(c.id).length }));
+    cs.sort((a, b) => (b.n > 0) - (a.n > 0));
+    items.push(...cs);
+  }
+  D.items = items; D.idx = 0;
+  if (!items.length) { sug.innerHTML = `<div class="si" style="cursor:default;color:var(--mu)">${esGrisal(q) ? 'Enter para buscar la etiqueta de GrisalExpress' : 'Sin resultados'}</div>`; sug.classList.add('on'); return; }
+  const m = stats();
+  sug.innerHTML = items.map((it, i) => it.p
+    ? `<div class="si${i === 0 ? ' hi' : ''}" data-act="despPick" data-i="${i}">🏷️ Pedido <b>#${it.p.num}</b> · ${esc((cliById(it.p.clienteId) || {}).nombre || '?')} <span class="chip ${ESTADO_CHIP[it.p.estado]}">${ESTADO_TXT[it.p.estado]}</span><div class="sub">código ${it.p.codigo} · ${esc((liveById(it.p.liveId) || {}).nombre || '')}</div></div>`
+    : `<div class="si${i === 0 ? ' hi' : ''}" data-act="despPick" data-i="${i}"><b>${nomAlias(it.c)}</b> ${histHTML(m[it.c.id])}<div class="sub">${it.c.tel ? esc(it.c.tel) : 'sin tel'} · ${it.n ? `<span style="color:var(--pe)">${it.n} sin salida</span>` : 'nada pendiente'}</div></div>`).join('');
+  sug.classList.add('on');
+}
+function despPick(i) {
+  const it = UI.desp.items[i]; if (!it) return;
+  if (it.p) return abrirPorCodigo(it.p);
+  abrirClientaDesp(it.c.id);
+}
+/** Escaneo o código: si es un retiro pagado y no tiene otros abiertos, se entrega directo. */
+function abrirPorCodigo(p) {
+  const D = UI.desp, c = cliById(p.clienteId) || { nombre: '?', id: null };
+  D.q = ''; const q = $('#dsp-q'); if (q) q.value = '';
+  cerrarSug();
+  if (p.estado === 'enviado') {
+    const k = p.paqueteId && paqById(p.paqueteId);
+    const como = k ? { retiro: '🏠 se entregó', agencia: '📦 salió por agencia', cadeteria: '🚴 salió por cadetería' }[k.tipo] : '🚚 salió';
+    D.res = { cls: 'mu', html: `#${p.num} ${esc(c.nombre)}: ya ${como} el ${fechaUY(p.fechas.enviado)}${k && k.nums.length > 1 ? ' (junto con ' + esc(k.nums.filter(n => n !== p.num).map(n => '#' + n).join(' · ')) + ')' : ''}`, cid: c.id };
+    cerrarClientaDesp(); render(); focoBuscar(); return;
+  }
+  if (!esActivo(p.estado)) {
+    D.res = { cls: 'li', html: `⚠️ #${p.num} ${esc(c.nombre)} está ${ESTADO_TXT[p.estado].toUpperCase()}`, cid: c.id };
+    cerrarClientaDesp(); render(); focoBuscar(); return;
+  }
+  const ab = abiertosDe(p.clienteId);
+  if (entregaEf(p) === 'retiro' && !porCobrar(p) && ab.length === 1 && !avisosDe(ab).length) {
+    const k = crearPaquete(c, [p], 'retiro', {}, []);
+    D.res = { paqId: k.id };
+    cerrarClientaDesp(); render(); focoBuscar(); return;
+  }
+  abrirClientaDesp(p.clienteId, [p.id]);
+}
+function buscarEnter() {
+  const D = UI.desp, q = D.q.trim(); if (!q) return;
+  if (esGrisal(q)) {
+    const Q = q.trim().toUpperCase(), orden = Q.replace(/^(EMA)?EMMA/, ''), sinEma = Q.replace(/^EMA(?=EMMA)/, '');
+    const k = (DB.paquetes || []).find(x => x.grisalOrden && [Q, orden, sinEma].includes(x.grisalOrden.toUpperCase()));
+    D.q = ''; $('#dsp-q').value = ''; cerrarSug();
+    if (k) { const p = pedById(k.principal); if (p) return abrirPorCodigo(p); }
+    D.res = { cls: 'pe', html: `Etiqueta de GrisalExpress ${esc(orden)}: todavía no está vinculada a un paquete` };
+    render(); focoBuscar(); return;
+  }
+  const dig = q.replace(/\D/g, '');
+  if (/^\d{4,6}$/.test(q)) {
+    const p = todosPedidos().find(x => x.codigo === dig.padStart(5, '0'));
+    if (p) return abrirPorCodigo(p);
+    D.q = ''; $('#dsp-q').value = ''; cerrarSug();
+    D.res = { cls: 'li', html: `❌ ${esc(dig.padStart(5, '0'))}: no hay ningún pedido con ese código` };
+    render(); focoBuscar(); return;
+  }
+  if (!D.items.length) despSug();
+  if (D.items.length) despPick(Math.min(D.idx, D.items.length - 1));
+}
+
+Object.assign(ACT, {
+  despPick: d => despPick(+d.i),
+  despDarSalida: d => {
+    const ids = String(d.ids || '').split(',').filter(Boolean); UI.desp.res = null;
+    abrirClientaDesp(d.cid, ids, d.t);
+    if (ENVIOS.has(d.t)) { elegirSalida(d.t); render(); }   // en el celu abre en "Solo pago": acá queremos la salida
+  },
+  despArmar: d => { const a = listaTipo(d.t), g = a.find(x => x.cid === d.cid); UI.desp.res = null; abrirClientaDesp(d.cid, g ? g.ps.map(p => p.id) : null, d.t); },
+  despAbrir: d => { UI.desp.res = null; abrirClientaDesp(d.cid); },
+  despCerrar: () => { cerrarClientaDesp(); render(); focoBuscar(); },
+  despTog: (d, el, e) => {
+    const D = UI.desp; D.sel.has(d.id) ? D.sel.delete(d.id) : D.sel.add(d.id);
+    D.sinPago = false;
+    if (D.sel.size && !D.salida) { const ts = new Set([...D.sel].map(id => entregaEf(pedById(id)))); if (ts.size === 1 && ENVIOS.has([...ts][0])) elegirSalida([...ts][0]); }
+    render();
+  },
+  despTodos: () => { const D = UI.desp, ab = abiertosDe(D.cid); D.sel = D.sel.size === ab.length ? new Set() : new Set(ab.map(p => p.id)); D.sinPago = false; render(); },
+  despVer: (d, el, e) => { if (e) e.stopPropagation(); verPedidoDesp(d.id); },
+  despSal: d => {
+    elegirSalida(d.k); render();
+    setTimeout(() => { const el = d.k === 'agencia' ? $('#dsf-agencia') : d.k === 'cadeteria' ? $('#dsf-direccion') : $('#dsp-go'); if (el) { el.focus(); if (el.scrollIntoView) el.scrollIntoView({ block: 'center' }); } }, 30);
+  },
+  // 9/11: la cadetería cobra todo (pedido + envío + extra de cobro, hoy $70) a clientes de confianza que autoriza el equipo. Sale sin pago marcado y la planilla de Grisal lleva el monto en "Cobrar".
+  despCobraTodo: () => {
+    const f = UI.desp.f, ps = [...UI.desp.sel].map(pedById).filter(p => p && porCobrar(p));
+    if (!ps.length) return toast('Estos pedidos ya tienen el pago marcado');
+    const base = ps.reduce((s, p) => s + calc(p).total, 0), tar = +cfg('tarifaEnvio') || 0;
+    f.cobro = 'monto'; f.monto = String(base + tar + extraCobroCadete()); f.conEnvio = false; f.cuenta = 'sin'; f.transfEdit = false;
+    toast('Cobra la cadetería ' + fmt(base + tar + extraCobroCadete()) + ' (pedido ' + fmt(base) + ' + envío ' + fmt(tar) + ' + extra ' + fmt(extraCobroCadete()) + ')'); render();
+  },
+  despFv: d => { UI.desp.f[d.f] = d.v; if (d.f === 'cobro' && d.v !== 'pago') UI.desp.f.conEnvio = false; render(); if (d.f === 'cobro' && d.v === 'monto') setTimeout(() => { const el = $('#dsf-monto'); if (el) el.focus(); }, 20); },
+  despCuenta: d => {
+    let cta = d.c;
+    if (!cta) { cta = (prompt('¿En qué cuenta entró la transferencia?') || '').trim(); if (!cta) return; }
+    const f = UI.desp.f; f.cuenta = f.cuenta === cta ? null : cta; if (f.cuenta2 === f.cuenta) f.cuenta2 = null; f.transfEdit = false; render();
+  },
+  despPlazo: d => { UI.desp.f.plazo = sumarDias(hoyISO(), +d.d); render(); },
+  despDos: () => { const f = UI.desp.f; f.dos = !f.dos; if (!f.dos) { f.cuenta2 = null; f.monto2 = ''; } f.transfEdit = false; render(); },
+  despCuenta2: d => { const f = UI.desp.f; f.cuenta2 = f.cuenta2 === d.c ? null : d.c; f.transfEdit = false; render(); setTimeout(() => { const el = $('#dsf-monto2'); if (el) el.focus(); }, 20); },
+  despDeshacerPago: () => {
+    const r = UI.desp.res; if (!r || !r.pagos) return;
+    if (!confirm('¿Deshacer este pago?')) return;
+    r.pagos.forEach(id => { const g = DB.pagos.find(x => x.id === id), p = g && pedById(g.pedidoId);
+      if (p && p.pago && p.pago.conEnvio && p.estado !== 'enviado' && p.cobroEnvio === 'pago') { p.cobroEnvio = null; }
+      anularPago(id); });
+    savePagos(); guardar(); UI.desp.res = { cls: 'mu', html: '↩️ Pago deshecho', cid: r.cid }; render();
+  },
+  despConEnvio: () => {
+    const f = UI.desp.f; f.conEnvio = !f.conEnvio;
+    if (f.conEnvio) { f._cobroAntes = f.cobro; f.cobro = 'pago'; } else if (f.cobro === 'pago') f.cobro = f._cobroAntes === 'pago' ? 'pago' : (f._cobroAntes || null);
+    f.transfEdit = false; render();
+  },
+  despVista: d => { UI.desp.vista = d.v; render(); },
+  despFiltro: d => { UI.desp.filtro = UI.desp.filtro === d.t ? 'todos' : d.t; UI.desp.filtroHoy = null; render(); },
+  despFiltroHoy: d => { UI.desp.filtroHoy = d.t; render(); },
+  despGo: () => despGo(),
+  despPrint: d => imprimirPaquete(d.k),
+  despDeshacer: d => deshacerPaquete(d.k),
+  despResX: () => { UI.desp.res = null; render(); focoBuscar(); },
+  despGrisal: () => copiarGrisalHoy(),
+  despGrisalPasar: () => pasarAGrisal(),
+  despHoja: () => hojaCadeteHoy()
+});
+Object.assign(INP, {
+  despQ: el => { UI.desp.q = el.value; despSug(); },
+  despF: el => {
+    UI.desp.f[el.dataset.f] = el.value;
+    if (el.dataset.f === 'transf') UI.desp.f.transfEdit = true;
+    if (el.dataset.f === 'plazo') { const b = $('#dsp-go'); if (b && el.value) b.textContent = '⏸️ Guardar sin pagar hasta el ' + fechaUY(el.value, 1); }
+    if (el.dataset.f === 'monto2') {
+      const D = UI.desp, f = D.f, porCob = [...D.sel].map(pedById).filter(p => p && sinSalir(p) && porCobrar(p)), v = dosV0(porCob, D.salida, f);
+      const r = $('#dsf-dos-res'); if (r) r.innerHTML = dosResTxt(f, v);
+      const b = $('#dsp-go'); if (b) b.disabled = !(v && v.ok);
+      const tr = $('#dsf-transf'); if (tr && !f.transfEdit && v && v.ok) tr.value = String(v.tot1);
+    }
+    // El texto del botón de cadetería muestra el monto: se actualiza sin re-dibujar la pantalla
+    if (el.dataset.f === 'monto') { const b = $('#dsp-go'); if (b && UI.desp.salida === 'cadeteria') b.textContent = '🚴 Despachar por cadetería' + (num(el.value) > 0 ? ' · cobra ' + fmt(num(el.value)) : ''); }
+  }
+});
+document.addEventListener('keydown', e => {
+  if (UI.tab !== 'despacho' || $('#modal').classList.contains('on')) return;
+  const el = e.target;
+  if (el.id === 'dsp-q') {
+    const D = UI.desp, sug = $('#dsp-sug');
+    if (e.key === 'ArrowDown' && D.items.length) { e.preventDefault(); D.idx = Math.min(D.idx + 1, D.items.length - 1); marcarSug(); }
+    else if (e.key === 'ArrowUp' && D.items.length) { e.preventDefault(); D.idx = Math.max(D.idx - 1, 0); marcarSug(); }
+    else if (e.key === 'Enter') { e.preventDefault(); buscarEnter(); }
+    else if (e.key === 'Escape') { if (sug.classList.contains('on')) cerrarSug(); else if (D.cid) { cerrarClientaDesp(); render(); } }
+    return;
+  }
+  if (e.key === 'Escape' && UI.desp.cid && !el.closest('.sw')) { cerrarClientaDesp(); render(); focoBuscar(); return; }
+  // Lector de códigos: si el foco no está en un campo, lo que se escanea va al buscador
+  const libre = el === document.body || el.tagName === 'BUTTON' || el.classList.contains('dsp-p');
+  if (libre && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && /[\w]/.test(e.key) && e.key !== ' ') { const q = $('#dsp-q'); if (q) q.focus(); }
+}, true);
+function marcarSug() { document.querySelectorAll('#dsp-sug .si').forEach((x, i) => { x.classList.toggle('hi', i === UI.desp.idx); if (i === UI.desp.idx) x.scrollIntoView({ block: 'nearest' }); }); }
+document.addEventListener('click', e => { if (!e.target.closest('#p-despacho .sw')) { const s = document.getElementById('dsp-sug'); if (s) s.classList.remove('on'); } });
+window.addEventListener('afterprint', () => { if (UI.tab === 'despacho') focoBuscar(); });
+// Al entrar a Despacho en la compu, el cursor queda listo para el lector (en el celular no, para no abrir el teclado)
+const _actTab = ACT.tab;
+ACT.tab = d => { _actTab(d); if (d.t === 'despacho' && window.matchMedia && matchMedia('(pointer:fine)').matches) focoBuscar(); };
+
+// ── Etiqueta de agencia: logo e íconos (PNG negro con transparencia, embebidos) y precarga de fuente e imágenes ──
+// Se cargan antes de imprimir para que la etiqueta salga completa (el área de impresión está oculta y no los pediría sola).
+const ETQ_IMG = {"person":{"w":59,"h":66,"src":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADsAAABCCAQAAABDAWYxAAAH9klEQVR42r2ZX6gfRxXHPzM7u85ud29zUw3YoFFSSFKxf1KMikERRdJUSo2EQvXJt4I+VGgf9ElEURAliA8i+CJoURQNxYDBihFEU7g+lIqUUuuD0gZK/pDYa/L77fiwZ+Z3Znd/Saq0O1zu/mbOzJk558w533PWYAAIDI+Rv7zPpj6Dw8p7D+l9yZJAoCdka615nCIJE3akt/huU39Qqwwb6IGC5Whs+gSM48aPxWCBXk69UCcbJFFghC7ADRiH4bRhRhh5n5EFCwKBJbdxFwe5nZb/cJHn2eI5eixOThxYzq6zklEYBGiUGFditVgcjpKahhpPyyc5S5hpP2AfDS0tHodN1mBUs5rXjdiWVHg8nuNsz7KM7SfsosbjKCmVEV6HLSMzWrGt8JRs8sfrsoztKI4Sj082Hm+HERkMb4ntmP2KbcV7WNwU00DgURw1NS6T4+q0FotFfqxnW3L3TbMc2mNUeCrKTKxGndUabGbsIbuplp7bODdzDX7JKc7T8hEeZHMy+gCncQSWs5fJxFs5NSuDo8RhOTMjxk1qShGX58MzNHuoaWQFM9PW6rbE4zg6Wu43dHhaNmhpaelo8JQcG9E9TU1Nldiyji0ZW0tFTcXlbLEnsTg8LR2t3NOODg8cGjH+GB6f9DvhY2aMyWDxVDyYLfSC3MiShk5O29LS4KhwHM+oz1LjqRLb3CfM6nWwYMupbKG9VLSUODwNDQ01NTWeEkeD56mMfv/12LLGnAw+W+THQMsGFZYSL7qr5PwVLQ3vz2Z8XtyGUU5I+Nlxh/wvCNyd7fHbINFUx9Wgeix/4UU146hEo9mgxsQxIoHunozyOWDBNZbCvqdP0XbYhGHBSTXj4MgnzIT56bDhdvXrEtsYFjp0qW0GljiWBJ5Rc94qAGDqjLLTrs5sscBbVO9rE5EGBV9CWuuSmlPQj7aXCTnMgJSewFXV49MJI6TpRW9Gtm4wBCo1Z1sownrdzungvHq/lVKxCMm88pgK+9Scf6yHN9qHaB30wFZGuR8osBRyLpKoDQUF0GO4X834rbIdbbSBia8cWkkJtNktPAHUNHicuocr/FFTsiub8QCOJgO76v5qsBHfIhbOcVNHQyexRzOuxGMZvpDRb1JRJ81n3qHIokMYYcdtPpWJ/gxWwKrBUCRtFxQsqTmjqE/xQ0pgmWk3ndiMcA7pxAY3Am0fosJhknv04hxbOmp+mtHeJ8qyE38shqnZ6sDnYRJvD4iT8RL2GtFrw/cyutMCW+0aRDoDJ4fhStDfyQk2HEBATSNsK3by6xHVbgGtGi1nV01DLKsILBUtNc0EsPyVT+DFhj3v5okJxXE8DRU2E616n8PI0Q2U3ILhAu/kpZkb/ytewnGI901GvsR3JGe6Kj5ZJ2tmitpd0ogFLB0bWODA64Crj1NJ6rJCUjbPCJBcbbyBAiOLLFkAcIWPcnPP13mV18SrR6MKEz+YofZSWp2uORxYk2xdr52gkwDSCORxKSEzU8OOAKWhwQGbPPm6Wcb2OaCkwQv0cQq8jtKj6F8baioe/59ZDu1F7qCikoyxTFmRqlVE6RcYHD0tf2LvrO7OcZJnuMCCAigpuJPDHF6j6Uf4GRYHLOi1o8xTS4enZu/s7n/HZ3hXootxp8bjaTjEt7i41rIbgeoKJ8dIYjE4qlmmJ3i7+K5a8oGODWk72KDDY7Ec4+XJ3G9SS8icYetE9puTaVvsFonUdJIPNKnFhKSlFqrHZlPPaKYjF+2k82+jKV9RMaRKAWCIsCvWDTVlotvDK6NVPi5AQIWGlUeGL47IH5YU2crWqlTJiG+VtGipJR5Lw59HK+3EpZWUMRngHSPST+Pp6LKUMeb4ThIxp3JYSynmY6nZytY6BXjqlaCjXuHpjPAJPDUtbWKrLT6Wj5yKM5Ht4HR2jkDCYUqpaajYCvdmRL+noZXrEbPydWzNyNNZHC0t943cR5whZYSaenLW3dRJvOOKy8DWzbA1CRJ1bNLwtWzND0AEOkMKXbInI/gGNZ3YZ76sVefM2eb3omUHDW+b6Leiwg5TehYcyyZ+V1xmmKCDmCHp6ur0OhqWLCi4zFdV/xF2DvOHBRYEPquGn+JcSjnIApbOeCLT2QKQFIcKfpSNfXAYt1gKenZwUA1+P2U5qxxQJ91RDv0NSrgByz/5u+p7aNi2FUS8P5twlp4FC8XYJLBjMvEGpQqdxQY5cU/Pz9XYPUOmGIvQd2WZ3vmUbDIDedZpdFoVGCTyBzV2L46AlJ4L3quGniVQZJrMn6E4D4Vsq19Tb4/sn89S7YpryNUtuFMNvYLDpUx8qrtiriygNrAyugKD5UJGcwtXhvzTEtilBl7FUbJYe5Z5gU5LElY2+O+s1wMmnrZTAxfp5QvHqqhisy2EyZcAM/8pAiOFltVTxkUNIdvnv9jmGoFehGSUjntBzyFtwcrNtiOGy1TDmVHR3AeZ+7lCx1UChVQTiwTjgziChdSlghTPYnmhkGzXyKebba5kpZckwjDRyhGO8EY+YSj+hXUlujfk6REr7glcftPYXgLC8J2q58tvEtPTnBusxEn94dH/M/W4mbZFM0AEk9x7YB+PUGEo1BfKoGJREBuOnxbjfS0k3BfpqsUvfddYssBQ4CjY4hdy2Xoj9264veOCXp6jDSXOxSjiGLlAq+JDrFr2edYzLdlHFFyMYqxJsVY7i3FksiPEYVRNMsrJYOhZxPLofwEi5e8tBTCCYAAAAABJRU5ErkJggg=="},"phone":{"w":62,"h":64,"src":"data:image/png;base64,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"},"pin":{"w":58,"h":78,"src":"data:image/png;base64,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"}};
+try {
+  Object.values(ETQ_IMG).forEach(o => { const i = new Image(); i.src = o.src; if (i.decode) i.decode().catch(() => {}); });
+  if (document.fonts && document.fonts.load) ['400', '500', '700', '900'].forEach(w => document.fonts.load(w + ' 20px Poppins').catch(() => {}));
+} catch (e) { /* si falla, imprime igual */ }
+
+// ─── Pasar a Grisal directo a la planilla (31/10) ──────────────
+// La app manda las cadeterías de hoy a un Apps Script de Yoan (app web) que escribe en la hoja "ingresos" de Grisal.
+// URL y clave en config (grisalUrl, grisalClave): nunca en el código (el repo es público).
+const GRISAL_LETRAS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function grisalOrdenNuevo() {
+  for (;;) {
+    let c = ''; const r = crypto.getRandomValues(new Uint32Array(8));
+    for (let i = 0; i < 8; i++) c += GRISAL_LETRAS[r[i] % GRISAL_LETRAS.length];
+    if (/\d/.test(c) && /[A-Z]/.test(c) && !(DB.paquetes || []).some(k => k.grisalOrden === c)) return c;   // 8 caracteres: el QR de Grisal es "EMMA" + N Orden
+  }
+}
+const grisalConectado = () => !!(cfg('grisalUrl') && cfg('grisalClave'));
+const grisalPendientes = () => paquetesDeHoy().filter(k => k.tipo === 'cadeteria' && !k.grisalEnviado && !k.grisalCopiado);   // las copiadas a mano ya están en la planilla
+let _grisalOcupado = false;
+async function pasarAGrisal(solo) {
+  if (_grisalOcupado) return false;
+  const ks = solo || grisalPendientes().reverse();
+  if (!ks.length) return toast('Las cadeterías de hoy ya están en Grisal ✓');
+  const [y, mo, d] = hoyISO().split('-'), fecha = d + '/' + mo + '/' + y.slice(2);
+  ks.forEach(k => { if (!k.grisalOrden) k.grisalOrden = grisalOrdenNuevo(); });
+  savePaquetes();   // el código queda guardado antes de mandar: si se reintenta, no se duplica la fila
+  const filas = ks.map(k => {
+    const c = cliById(k.clienteId) || {}, e = k.envio || {};
+    return { orden: k.grisalOrden, tipo: k.tipoEnvio === 'cambio' ? 'Cambio' : 'Común', nombre: e.nombre || c.nombreEnvio || c.nombre || '', tel: telLegible(e.tel || c.tel), direccion: e.direccion || c.direccion || '', zona: e.barrio || c.barrio || '', cobrar: k.cobro || 0, producto: 'Paquete chico', fecha, detalles: e.nota || c.notaCadete || '' };
+  });
+  _grisalOcupado = true; toast('🚴 Pasando ' + filas.length + ' a Grisal…', 3000);
+  try {
+    const r = await fetch(cfg('grisalUrl'), { method: 'POST', body: JSON.stringify({ clave: cfg('grisalClave'), filas, marcar: !!cfg('grisalMarcar') }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'error');
+    const ts = ahoraISO(); let n = 0;
+    j.filas.forEach(f => { const k = ks.find(x => x.grisalOrden === f.orden); if (k && f.fila) { k.grisalEnviado = ts; k.grisalFila = f.fila; k.grisalCopiado = k.grisalCopiado || ts; n++; } });
+    savePaquetes();
+    toast(n === filas.length ? `✓ ${n} cadetería${n > 1 ? 's' : ''} en la planilla de Grisal` : `⚠️ Pasaron ${n} de ${filas.length}: probá de nuevo`, 5000);
+    return n === filas.length;
+  } catch (err) {
+    toast('⚠️ No se pudo pasar a Grisal (' + String(err.message || err).slice(0, 60) + '). Probá de nuevo o usá "Copiar".', 7000);
+    return false;
+  } finally { _grisalOcupado = false; render(); }
+}
+
+// ─── Etiqueta 10×15 de GrisalExpress (31/10) ──────────────────
+// Copia de la plantilla de Grisal ("Tablas ETIQUETA10X15"). El QR es "EMMA" + N Orden, igual que el que genera Grisal (verificado con una etiqueta real).
+const GRISAL_LOGO = '';   // cadetería de la otra tienda: no aplica
+// Remitente de la etiqueta de Grisal: nombre en etiquetas y teléfono del negocio (negocio.js / Config)
+const _gIco = {
+  casa: '<svg viewBox="0 0 24 24"><path d="M12 3 2 12h3v8h5v-6h4v6h5v-8h3z"/></svg>',
+  pin: '<svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>',
+  tel: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11"/><path fill="#fff" d="M9.2 6.5 7.7 7.4c-.6.4-.8 1.3-.4 2.4a13 13 0 0 0 6.9 6.9c1.1.4 2 .2 2.4-.4l.9-1.5-2.4-1.6-1.1 1a7 7 0 0 1-3.2-3.2l1-1.1z"/></svg>',
+  chat: '<svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.2 1.1 4.2 3 5.6L4 21l4.6-2.4c1.1.3 2.2.4 3.4.4 5.5 0 10-3.6 10-8s-4.5-8-10-8zM7.5 12.3a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm4.5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm4.5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6z" fill="#000"/></svg>'
+};
+(function () {
+  const st = document.createElement('style');
+  st.textContent = `
+.sheet-t:has(>.lbl.grs){padding:0}
+.lbl.grs,.sheet-t>.lbl.grs{flex:none;align-self:flex-start;box-sizing:border-box;width:100mm;height:149mm;padding:2mm 2.3mm 3mm;font-family:'Poppins',Arial,sans-serif;color:#000;background:#fff;display:flex;flex-direction:column;gap:1.6mm;overflow:hidden;line-height:1.15}
+.grs-top{display:flex;align-items:flex-start;gap:2mm;height:27mm;flex:none}
+.grs-logo{width:52mm;text-align:center;padding-top:3mm}.grs-logo img{width:45mm;display:block;margin:0 auto}.grs-web{font-weight:700;font-size:8.2pt;margin-top:.6mm;white-space:nowrap}
+.grs-der{flex:1;display:flex;flex-direction:column;align-items:center;gap:4mm;padding-top:5mm}.grs-fecha{font-weight:500;font-size:10.5pt}
+.grs-tipo{background:#000;color:#fff;border-radius:5mm;font-weight:700;font-size:11pt;width:36mm;height:9.6mm;display:flex;align-items:center;justify-content:center}
+.grs-box{border:.55mm solid #000;border-radius:2.6mm;padding:2mm 2.5mm}
+.grs-lab{font-weight:700;font-size:7.5pt}
+.grs-d{flex:none}
+.grs-dest{font-weight:700;text-align:center;line-height:1.05;margin:2mm 0 2.5mm;word-break:break-word}
+.grs-mid{flex:1;display:flex;flex-direction:column;gap:2.4mm;min-height:0;padding-top:2.5mm}.grs-fila{flex:1;display:flex;gap:1.5mm;min-height:0}
+.grs-dat{flex:1;display:flex;flex-direction:column;gap:2.4mm;min-width:0}
+.grs-f{display:flex;align-items:center;gap:2mm;font-size:12.5pt;word-break:break-word}.grs-f svg{width:3.8mm;height:3.8mm;flex:none}
+.grs-f.dir,.grs-f.tel,.grs-f .vacio{font-weight:700}.grs-f.chat{font-size:9pt;align-items:center;margin-top:auto;margin-bottom:6mm}.grs-f.chat svg{width:4.4mm;height:4.4mm}
+.grs-pago{background:#eef1f5;border-radius:1.6mm;font-weight:700;font-size:12.5pt;height:10.4mm;display:flex;align-items:center;justify-content:center}
+.grs-qr{width:30mm;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:1.5mm}.grs-qr svg{width:29mm;height:29mm;display:block}
+.grs-qr .t{font-weight:700;font-size:7.5pt;margin-top:1.4mm}.grs-qr .n{font-weight:700;font-size:13pt;letter-spacing:.2mm;line-height:1.1}
+.grs-rem{text-align:center;flex:none;height:32mm;box-sizing:border-box;padding-top:1.5mm}.grs-rem .grs-lab{text-align:left}.grs-rem b{display:block;font-weight:900;font-size:30pt;line-height:.86;letter-spacing:-.2mm;margin-top:-1.4mm}.grs-rem .s{font-size:9.5pt;margin-top:-.6mm;position:relative}.grs-rem i{display:block;font-size:9pt;margin-top:2.8mm}`;
+  document.head.appendChild(st);
+})();
+function etqGrisalHTML(k) {
+  const c = cliById(k.clienteId) || {}, e = k.envio || {};
+  const nom = String(e.nombre || c.nombreEnvio || c.nombre || '').trim();
+  const [y, mo, d] = localISO(new Date(k.fecha || Date.now())).split('-');
+  const cobro = +k.cobro || 0, pago = cobro ? 'A cobrar ' + fmt(cobro) : 'Pagado';
+  const det = String(e.nota || c.notaCadete || '').trim(), zona = String(e.barrio || c.barrio || '').trim();
+  const nomS = nom.length > 26 ? 14 : nom.length > 16 ? 17 : 22;
+  return `<div class="lbl grs">
+    <div class="grs-top"><div class="grs-logo"><img src="${GRISAL_LOGO}" alt=""><div class="grs-web">www.GrisalExpress.com.uy</div></div>
+      <div class="grs-der"><div class="grs-fecha">${d}/${mo}/${y}</div><div class="grs-tipo">${k.tipoEnvio === 'cambio' ? 'Cambio' : 'Común'}</div></div></div>
+    <div class="grs-box grs-d"><div class="grs-lab">DESTINATARIO/A</div><div class="grs-dest" style="font-size:${nomS}pt">${esc(nom || '________')}</div></div>
+    <div class="grs-box grs-mid">
+      <div class="grs-f dir">${_gIco.casa}<span>${esc(e.direccion || c.direccion || '________')}</span></div>
+      <div class="grs-fila"><div class="grs-dat">
+        <div class="grs-f">${_gIco.pin}<span${zona ? '' : ' class="vacio"'}>${esc(zona || '...')}</span></div>
+        <div class="grs-f tel">${_gIco.tel}<span>${esc(telLegible(e.tel || c.tel) || '—')}</span></div>
+        <div class="grs-pago">${pago}</div>
+        <div class="grs-f chat">${_gIco.chat}<span${det ? '' : ' class="vacio"'}>${esc(det || '...')}</span></div>
+      </div>
+      <div class="grs-qr">${barcodeSVG('EMMA' + k.grisalOrden)}<div class="t">Nro de Orden</div><div class="n">${esc(k.grisalOrden)}</div></div></div>
+    </div>
+    <div class="grs-box grs-rem"><div class="grs-lab">REMITENTE</div><b>${esc(negocio('marca')).replace(' ', '<br>')}</b><div class="s">${esc(negocio('tel'))}</div><i>¡Gracias por tu compra!</i></div>
+  </div>`;
+}
