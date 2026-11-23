@@ -1206,10 +1206,12 @@ function moverFoto(mid, de, a) {
   const fs = fotosDe(m).slice(); const [x] = fs.splice(de, 1); fs.splice(a, 0, x);
   mutStock(() => { m.fotos = fs; }); render();
 }
+/** Fecha de la primera publicación (para "Nuevo" en el catálogo). No se pisa si ya existe; al despublicar queda. */
+function marcarPublicado(m) { if (!m.publicadoEn) m.publicadoEn = new Date().toISOString(); }
 function publicarModelo(mid, si) {
   const m = modeloById(mid); if (!m) return;
   if (si && !listoWeb(m)) return toast('Para publicar hace falta: al menos 1 foto, nombre y precio de venta', 3500);
-  mutStock(() => { m.publicado = !!si; });
+  mutStock(() => { m.publicado = !!si; if (si) marcarPublicado(m); });
   toast(si ? (totalModelo(m) > 0 ? '🌐 Publicado: ya aparece en el catálogo' : '🌐 Publicado: aparece en el catálogo cuando tenga stock') : 'Despublicado: ya no aparece en el catálogo', 3500);
   render();
 }
@@ -1456,7 +1458,7 @@ async function confirmarRecepcion(cid) {
   const etq = entrarModelos(c, c.lineas);
   // Distrito: lo que ya tiene fotos, nombre y precio se publica solo en el catálogo
   const aPublicar = [...new Set(c.lineas.flatMap(l => l.modelos.map(mo => mo.mid)).filter(Boolean))].map(modeloById).filter(m => m && !m.publicado && listoWeb(m));
-  if (aPublicar.length) mutStock(() => aPublicar.forEach(m => { m.publicado = true; }));
+  if (aPublicar.length) mutStock(() => aPublicar.forEach(m => { m.publicado = true; marcarPublicado(m); }));
   c.lineas.forEach(l => { delete l.mid; });
   c.estado = 'recibida'; c.recibida = hoyISO();
   UI.recibir = null;
