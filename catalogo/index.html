@@ -32,7 +32,22 @@ main{max-width:1100px;margin:0 auto;padding:16px 12px;display:grid;grid-template
 @media(min-width:1000px){main{grid-template-columns:repeat(4,1fr)}}
 .card{background:var(--s1);border:1px solid var(--bd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
 .foto{position:relative;aspect-ratio:4/5;background:linear-gradient(160deg,#222226,#121214);display:flex;align-items:center;justify-content:center;overflow:hidden}
-.foto img.real{width:100%;height:100%;object-fit:cover}
+.slides{position:absolute;inset:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.slides::-webkit-scrollbar{display:none}
+.slides img{flex:none;width:100%;height:100%;object-fit:cover;scroll-snap-align:start;cursor:zoom-in}
+.dots{position:absolute;bottom:9px;left:0;right:0;display:flex;justify-content:center;gap:5px;pointer-events:none}
+.dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4)}
+.dots i.on{background:#fff}
+.visor{position:fixed;inset:0;z-index:70;background:#000;display:none;flex-direction:column}
+.visor.on{display:flex}
+.visor .vs{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.visor .vs::-webkit-scrollbar{display:none}
+.visor .vs div{flex:none;width:100%;height:100%;scroll-snap-align:start;display:flex;align-items:center;justify-content:center}
+.visor img{max-width:100%;max-height:100%;object-fit:contain;touch-action:pinch-zoom pan-x}
+.visor .top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;padding:calc(12px + env(safe-area-inset-top)) 14px 12px;background:linear-gradient(#000c,#0000);z-index:2}
+.visor .top b{flex:1;font-size:14px;font-weight:500}
+.visor .top span{color:var(--mu);font-size:13px;margin-right:14px}
+.visor .x{color:#fff;font-size:26px}
 .foto .ph{width:46%;opacity:.13}
 .foto .ph-t{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:10px;letter-spacing:.2em;color:#55555c;text-transform:uppercase}
 .cod{position:absolute;top:10px;left:10px;background:rgba(11,11,12,.8);border:1px solid #3a3a40;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:700;letter-spacing:.03em}
@@ -93,21 +108,22 @@ footer img{width:38px;opacity:.5;display:block;margin:0 auto 8px}
   <button class="wa" id="pedir" type="button">Pedir por WhatsApp</button>
 </section>
 <div class="toast" id="toast"></div>
+<div class="visor" id="visor"><div class="top"><b id="v-nom"></b><span id="v-n"></span><button class="x" id="v-x" type="button" aria-label="Cerrar">✕</button></div><div class="vs" id="v-s"></div></div>
 
 <script>
 'use strict';
 /* Catálogo de Distrito YF.
    AHORA: datos de ejemplo (abajo). DESPUÉS: los mismos campos salen de la base (solo lo publicado y con stock).
-   Cada modelo: num (código D), nombre para el cliente, categoria, precio, foto (url o vacío), talles { talle: unidades }. */
+   Cada modelo: num (código D), nombre para el cliente, categoria, precio, fotos [urls, la primera es la portada], talles { talle: unidades }. */
 const WHATSAPP = '';   // número de Distrito YF con código de país, ej. 59899123456 (pendiente)
 const ORDEN_T = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', '38', '40', '42', '44', '46', '48', '50', 'U'];
 const CATALOGO = [
-  { num: 1,  nombre: 'Remera oversize negra',        categoria: 'Remera',   precio: 790,  talles: { S: 0, M: 3, L: 4, XL: 2, XXL: 1 } },
+  { num: 1,  nombre: 'Remera oversize negra',        categoria: 'Remera',   precio: 790,  fotos: ['demo/muestra-1.jpg', 'demo/muestra-2.jpg', 'demo/muestra-3.jpg'], talles: { S: 0, M: 3, L: 4, XL: 2, XXL: 1 } },
   { num: 2,  nombre: 'Remera estampada blanca',      categoria: 'Remera',   precio: 890,  talles: { M: 2, L: 3, XL: 0 } },
-  { num: 3,  nombre: 'Bermuda de jean celeste',      categoria: 'Bermuda',  precio: 1290, talles: { 38: 1, 40: 3, 42: 4, 44: 2, 46: 0 } },
+  { num: 3,  nombre: 'Bermuda de jean celeste',      categoria: 'Bermuda',  precio: 1290, fotos: ['demo/muestra-2.jpg', 'demo/muestra-1.jpg'], talles: { 38: 1, 40: 3, 42: 4, 44: 2, 46: 0 } },
   { num: 4,  nombre: 'Camisa manga corta estampada', categoria: 'Camisa',   precio: 1190, talles: { M: 2, L: 2, XL: 1 } },
   { num: 5,  nombre: 'Jean baggy negro',             categoria: 'Jean',     precio: 1690, talles: { 40: 1, 42: 2, 44: 1 } },
-  { num: 6,  nombre: 'Chomba piqué blanca',          categoria: 'Chomba',   precio: 990,  talles: { S: 1, M: 3, L: 3, XL: 2 } },
+  { num: 6,  nombre: 'Chomba piqué blanca',          categoria: 'Chomba',   precio: 990,  fotos: ['demo/muestra-3.jpg'], talles: { S: 1, M: 3, L: 3, XL: 2 } },
   { num: 7,  nombre: 'Camisa tejida crudo',          categoria: 'Camisa',   precio: 1490, talles: { M: 0, L: 0, XL: 0 } },
   { num: 8,  nombre: 'Conjunto deportivo negro',     categoria: 'Conjunto', precio: 1990, talles: { M: 1, L: 2, XL: 1 } },
   { num: 9,  nombre: 'Jean cargo gris',              categoria: 'Jean',     precio: 1590, talles: { 40: 2, 42: 2, 44: 1, 46: 1 } },
@@ -137,7 +153,9 @@ function pintarGrilla() {
   const ms = CATALOGO.filter(m => filtro === 'Todo' || m.categoria === filtro).sort((a, b) => disponible(b) - disponible(a) || a.num - b.num);
   $('#grilla').innerHTML = ms.length ? ms.map(m => {
     const ago = !disponible(m);
-    const foto = m.foto ? `<img class="real" src="${esc(m.foto)}" alt="${esc(m.nombre)}" loading="lazy">` : `<img class="ph" src="yf.png" alt=""><span class="ph-t">Foto próximamente</span>`;
+    const fs = m.fotos || [];
+    const foto = fs.length ? `<div class="slides" data-num="${m.num}">${fs.map((u, i) => `<img src="${esc(u)}" alt="${esc(m.nombre)}" loading="lazy" data-ver="${m.num}" data-i="${i}">`).join('')}</div>${fs.length > 1 ? `<div class="dots" id="dots-${m.num}">${fs.map((_, i) => `<i${i ? '' : ' class="on"'}></i>`).join('')}</div>` : ''}`
+      : `<img class="ph" src="yf.png" alt=""><span class="ph-t">Foto próximamente</span>`;
     const tl = tallesOrd(m).map(t => {
       const q = m.talles[t] || 0, ya = enBolsa(m.num, t);
       return `<button class="t${q <= 0 ? ' no' : ''}${ya ? ' en' : ''}" data-num="${m.num}" data-t="${esc(t)}" aria-label="Talle ${esc(t)}">${t === 'U' ? 'Único' : esc(t)}</button>`;
@@ -169,6 +187,27 @@ document.addEventListener('click', e => {
   }
   const q = e.target.closest('[data-quitar]'); if (q) { bolsa.splice(+q.dataset.quitar, 1); guardar(); pintarGrilla(); pintarBolsa(); if (!bolsa.length) abrir(false); return; }
 });
+// Fotos: puntitos al deslizar y visor a pantalla completa
+document.addEventListener('scroll', e => {
+  const sl = e.target.closest && e.target.closest('.slides'); if (!sl) return;
+  const i = Math.round(sl.scrollLeft / sl.clientWidth), d = document.getElementById('dots-' + sl.dataset.num);
+  if (d) [...d.children].forEach((x, k) => x.classList.toggle('on', k === i));
+}, true);
+function verFotos(num, i) {
+  const m = CATALOGO.find(x => x.num === num); if (!m) return;
+  const fs = m.fotos || [], vs = $('#v-s');
+  $('#v-nom').textContent = codD(m) + ' · ' + m.nombre;
+  vs.innerHTML = fs.map(u => `<div><img src="${esc(u)}" alt=""></div>`).join('');
+  $('#visor').classList.add('on'); document.body.style.overflow = 'hidden';
+  const num_ = () => { $('#v-n').textContent = fs.length > 1 ? (Math.round(vs.scrollLeft / vs.clientWidth) + 1) + ' / ' + fs.length : ''; };
+  vs.onscroll = num_;
+  requestAnimationFrame(() => { vs.scrollLeft = i * vs.clientWidth; num_(); });
+}
+function cerrarVisor() { $('#visor').classList.remove('on'); document.body.style.overflow = ''; }
+$('#v-x').onclick = cerrarVisor;
+$('#v-s').addEventListener('click', e => { if (e.target.tagName !== 'IMG') cerrarVisor(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarVisor(); });
+document.addEventListener('click', e => { const im = e.target.closest('[data-ver]'); if (im) verFotos(+im.dataset.ver, +im.dataset.i); });
 $('#bar').onclick = () => abrir(true);
 $('#cerrar').onclick = $('#velo').onclick = () => abrir(false);
 $('#pedir').onclick = () => {
