@@ -603,7 +603,7 @@ const BORRADAS = new Set(); // compras eliminadas en esta sesión
 const PRIV_L = ['precioImp', 'precioReal', 'precioCompra'];
 const unidadesDe = mo => Object.values(mo.talles || {}).reduce((n, q) => n + (+q || 0), 0);
 const unidadesLinea = l => (l.modelos || []).reduce((n, mo) => n + unidadesDe(mo), 0);
-function modeloVacio(l, extra) { return Object.assign({ k: uid('k'), mid: null, nombre: l ? l.descripcion : '', categoria: 'Remera', tipoTalle: 'letras', talles: {}, precioVenta: 0, repos: false }, extra || {}); }
+function modeloVacio(l, extra) { return Object.assign({ k: uid('k'), mid: null, nombre: l ? (l.sugerido || l.descripcion) : '', categoria: (l && l.cat) || 'Remera', tipoTalle: (l && l.tt) || 'letras', talles: {}, precioVenta: 0, repos: false }, extra || {}); }
 
 /** Compra del formato anterior (artículos con código de stock) → líneas con un modelo de talle único. */
 function desdeArticulos(c) {
@@ -622,6 +622,7 @@ function partir(c) {
   const pub = { v: 3 };
   ['id', 'tipo', 'estado', 'nombre', 'fecha', 'creado', 'recibida'].forEach(k => { if (c[k] !== undefined && c[k] !== null) pub[k] = c[k]; });
   pub.lineas = c.lineas.map(l => ({ lid: l.lid, descripcion: l.descripcion || '', qty: +l.qty || 0, reint: +l.reint || 0,
+    ...(l.sugerido ? { sugerido: l.sugerido } : {}), ...(l.cat ? { cat: l.cat } : {}), ...(l.tt ? { tt: l.tt } : {}),
     modelos: (l.modelos || []).map(mo => ({ k: mo.k, mid: mo.mid || null, nombre: mo.nombre || '', categoria: mo.categoria || 'Otro', tipoTalle: mo.tipoTalle || 'unico', talles: mo.talles || {}, precioVenta: num(mo.precioVenta), repos: !!mo.repos })) }));
   const priv = { blue: num(c.blue), uyu: num(c.uyu), costoImp: num(c.costoImp), l: {} };
   c.lineas.forEach(l => { const o = {}; PRIV_L.forEach(k => { if (num(l[k])) o[k] = num(l[k]); }); priv.l[l.lid] = o; });
@@ -688,6 +689,38 @@ function saveCompras() {
     .catch(e => { console.error(e); toast('⚠️ No se pudieron guardar las compras'); });
   return _cadena;
 }
+/* Importación traída de afuera (22/11): llega en config.importacionPendiente (sin cifrar, solo la ven los miembros).
+   Al abrir Gestión con el código se convierte en una compra "pedida" cifrada con ESE código y se borra de config. */
+const _cargarComprasBase = cargarCompras;
+cargarCompras = async function () {
+  const r = await _cargarComprasBase();
+  const p = cfg('importacionPendiente');
+  if (p && p.id && CR.key) {
+    if (!compraById(String(p.id))) {
+      COMPRAS.push({ id: String(p.id), tipo: 'importacion', estado: 'pedida', nombre: p.nombre || 'Importación', fecha: p.fecha || hoyISO(), creado: p.creado || ahoraISO(),
+        blue: num(p.blue), uyu: num(p.uyu), costoImp: num(p.costoImp),
+        lineas: (p.lineas || []).map(l => ({ lid: l.lid || uid('l'), descripcion: l.descripcion || '', qty: +l.qty || 0, precioImp: num(l.precioImp), precioReal: num(l.precioReal), reint: 0, modelos: [],
+          ...(l.sugerido ? { sugerido: l.sugerido } : {}), ...(l.cat ? { cat: l.cat } : {}), ...(l.tt ? { tt: l.tt } : {}) })) });
+      ordenarCompras();
+      await saveCompras();
+      toast('📥 Llegó la importación "' + (p.nombre || '') + '": está en Historial como pedida', 5000);
+    }
+    saveConfig({ importacionPendiente: null });
+  }
+  // Precios que llegan después para una compra ya convertida: { compraId, blue, uyu, costoImp, lineas: { lid: { precioImp, precioReal } } }
+  const pp = cfg('preciosPendientes');
+  if (pp && pp.compraId && CR.key) {
+    const c = compraById(String(pp.compraId));
+    if (c) {
+      ['blue', 'uyu', 'costoImp'].forEach(k => { if (num(pp[k])) c[k] = num(pp[k]); });
+      for (const l of c.lineas) { const x = (pp.lineas || {})[l.lid]; if (x) { if (num(x.precioImp)) l.precioImp = num(x.precioImp); if (num(x.precioReal)) l.precioReal = num(x.precioReal); } }
+      await saveCompras();
+      toast('💲 Se cargaron los precios de "' + c.nombre + '"', 4000);
+    }
+    if (c || !(NUBE.compras || []).length) saveConfig({ preciosPendientes: null });
+  }
+  return r;
+};
 const compraById = id => COMPRAS.find(c => c.id === id);
 const lineaDe = (c, lid) => c && c.lineas.find(l => l.lid === lid);
 
@@ -1107,7 +1140,7 @@ function entrarModelos(c, lineas) {
     for (const l of lineas) for (const mo of l.modelos || []) {
       if (!unidadesDe(mo)) continue;
       let m = mo.mid && modeloById(mo.mid);
-      if (!m) { m = crearModelo(mo); mo.mid = m.id; mo.repos = false; }
+      if (!m) { m = crearModelo(mo); mo.mid = m.id; mo.repos = false; const ali = String(l.descripcion || '').trim(); if (ali && ali.toLowerCase() !== m.nombre.toLowerCase()) m.alias = [ali]; }   // el nombre interno queda como alias (no lo ve el cliente)
       else {
         if (num(mo.precioVenta)) m.precioVenta = num(mo.precioVenta);
         if (m.activo === false || !(+m.num)) activar(m);

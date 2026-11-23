@@ -42,6 +42,11 @@ En cada publicación:
 - Pestañas: Ventas, Despacho, 💬 WhatsApp (antes Mabel; los textos dicen "el agente"), Clientes, Guardados, 🤝 En mano (antes Mostrador), Config.
 - Colores: negro/blanco/gris (`--ac:#f2f2f2`); botones primarios con texto oscuro.
 
+## Compras traídas de afuera
+- `config.importacionPendiente` (sin cifrar): al abrir Gestión con el código se convierte en compra "pedida" cifrada y se borra. `config.preciosPendientes` = { compraId, blue, uyu, costoImp, lineas: { lid: { precioImp, precioReal } } } carga precios a una compra ya convertida.
+- Cada línea puede traer `sugerido` (nombre para el cliente), `cat` y `tt` (tipo de talle): la recepción los propone y se pueden editar. El nombre interno (`descripcion`) queda como alias del modelo; el cliente no lo ve.
+- Catálogo: código de modelo con D adelante (D12) + talle.
+
 ## Stock
 - **El número de stock lo maneja la base.** Cada fila de `movimientos` suma o resta en su fila de `stock` (trigger `aplicar_movimiento`). La app no puede escribir `datos.stock`; una fila nueva arranca en 0. Todo cambio de stock va con su movimiento (`mov()` en Gestión, `moverStock()` en Pedidos).
 - Nunca menos de 0. Si se vende algo sin stock, la base agrega un movimiento `sin_stock` que la deja en 0.
