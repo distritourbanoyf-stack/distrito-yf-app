@@ -44,7 +44,9 @@ En cada publicación:
 
 ## Datos del negocio
 - `negocio.js`: nombre, nombre en etiquetas, tarifa, recargo de Mercado Pago (10%), nombres de cuentas de cobro, horarios. Lo que se guarda en ⚙️ Config gana (`config.negocio` = { nombre, marca, tel, rut, ciudad }, `config.tarifaEnvio`, `config.mpRecargo`, `config.cuentasPago`).
-- Etiqueta de agencia 10×15: nombre de la marca en texto (todavía no hay logo final; cuando esté el monograma YF, va como imagen en `ETQ_IMG`).
+- Etiqueta de agencia 10×15: logo de Distrito YF (`ETQ_IMG.logo`, negro). Íconos de la app: monograma YF blanco sobre negro.
+- Categorías y talles (en `gestion.html`): `CATEGORIAS`, `TALLES` (letras S–XXXL, números 38–50, único) y `ORDEN_T` en `pedidos4.js`.
+- Pruebas en la base real: la base es de prueba hasta que se cargue mercadería real. Borrar solo por id lo de prueba; nunca tocar `config.gestionAcceso` (es el código de acceso de Gestión).
 
 ## Cómo probar sin tocar la base
 Servir la carpeta con un servidor local y, con Playwright, reemplazar `vendor/supabase-2.45.4.js` por un Supabase falso que devuelva datos de ejemplo y anote los `upsert`. Así se prueba que abren todas las pestañas sin errores. Además: `node --check` de cada `.js` y del script de cada `.html`.
