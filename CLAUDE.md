@@ -29,12 +29,18 @@ En cada publicación:
 
 ## Cómo está armado el código
 - `index.html` y `gestion.html` se editan **directo**.
-- Orden de carga en Pedidos: `vendor/supabase` → `version.js` → `negocio.js` → `impresora.js` → `nube.js` → script de `index.html` → `despacho.js` → `pagos.js` → `vendor/qrcode` → `escaner.js` → `etiquetas.js` → `live.js` → `promos.js` → `pedidos4.js` → `mabel.js` → `mabeltab.js` → `stock.js`. Gestión: `vendor/supabase` → `qrcode` → `version.js` → `negocio.js` → `impresora.js` → `promos.js` → `nube.js` → script de `gestion.html`.
+- Orden de carga en Pedidos: `vendor/supabase` → `version.js` → `negocio.js` → `impresora.js` → `nube.js` → script de `index.html` → `despacho.js` → `pagos.js` → `vendor/qrcode` → `escaner.js` → `etiquetas.js` → `live.js` → `promos.js` → `pedidos4.js` → `mabel.js` → `mabeltab.js` → `stock.js` → `ventas.js`. Gestión: `vendor/supabase` → `qrcode` → `version.js` → `negocio.js` → `impresora.js` → `promos.js` → `nube.js` → script de `gestion.html`.
 - Los `.js` **extienden** lo anterior: `const _x = f; f = function () { _x(); … }` y `Object.assign(ACT, {…})`. Antes de arreglar algo, buscá la última definición.
 - Botones: `data-act` → `ACT`, `data-chg` → `CHG`, `data-inp` → `INP`.
 - Nombres internos heredados (`emma_…` en `put()`/localStorage, `EMMA_VERSION`, tabla `clientas`, columna `clienta_id`, ajustes `emma.stock_mov`) quedan así: no se ven. Los textos visibles dicen "cliente" (es ropa de hombre).
 - Datos: todo vive en Supabase. `nube.js` carga las tablas al entrar, detecta qué filas cambiaron cuando la app llama a `put('emma_…')` y las sube; si no hay internet, encola. Una fila que falta en memoria se sube como `borrado: true`: **nunca reemplazar `DB.lives`, `DB.clientes`, etc. por una copia vieja**.
 - Si la base rechaza una fila, `nube.js` la aparta ("⚠️ N cambios sin guardar · tocá") y sigue con el resto.
+
+## Ventas directas (la venta principal)
+- `ventas.js`: la pestaña "🛒 Ventas" (internamente `data-t="live"`) abre en un registro fijo por mes: un live con `tipo: 'ventas'` y `mes: 'AAAA-MM'` ("Ventas · noviembre 2026"). Reusa todo el flujo de pedidos (código, pago, despacho). La fecha de pago se renueva sola (mañana). En Ventas se ocultan los envíos masivos de plantillas del live.
+- Los lives son ocasionales: "🎥 Hacer un live" crea uno; "🛒 Volver a ventas" vuelve. Al abrir la app, si no hay un live de hoy, arranca en Ventas del mes.
+- Pestañas: Ventas, Despacho, 💬 WhatsApp (antes Mabel; los textos dicen "el agente"), Clientes, Guardados, 🤝 En mano (antes Mostrador), Config.
+- Colores: negro/blanco/gris (`--ac:#f2f2f2`); botones primarios con texto oscuro.
 
 ## Stock
 - **El número de stock lo maneja la base.** Cada fila de `movimientos` suma o resta en su fila de `stock` (trigger `aplicar_movimiento`). La app no puede escribir `datos.stock`; una fila nueva arranca en 0. Todo cambio de stock va con su movimiento (`mov()` en Gestión, `moverStock()` en Pedidos).
