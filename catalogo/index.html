@@ -166,9 +166,11 @@ const tallesOrd = m => Object.keys(m.talles).sort((a, b) => ORDEN_T.indexOf(a) -
 const disponible = m => Object.values(m.talles).some(q => q > 0);
 let filtro = 'Todo';
 const tallesSel = new Set();   // filtro por talle: se pueden elegir varios
+// La bolsa queda guardada en el navegador (en demo, con otra clave para no mezclar)
+const CLAVE_BOLSA = DEMO ? 'dyf_bolsa_demo' : 'dyf_bolsa';
 let bolsa = [];
-try { bolsa = JSON.parse(localStorage.getItem('dyf_bolsa') || '[]'); } catch (e) { bolsa = []; }
-const guardar = () => { try { localStorage.setItem('dyf_bolsa', JSON.stringify(bolsa)); } catch (e) {} };
+try { bolsa = JSON.parse(localStorage.getItem(CLAVE_BOLSA) || '[]'); if (!Array.isArray(bolsa)) bolsa = []; } catch (e) { bolsa = []; }
+const guardar = () => { try { localStorage.setItem(CLAVE_BOLSA, JSON.stringify(bolsa)); } catch (e) {} };
 const enBolsa = (num, t) => bolsa.filter(x => x.num === num && x.t === t).length;
 
 function pintarChips() {
@@ -206,7 +208,7 @@ function pintarBolsa() {
   $('#items').innerHTML = bolsa.map((x, i) => `<div class="it"><div class="d">${esc(x.nombre)}<small>${'D' + x.num} · talle ${x.t === 'U' ? 'único' : esc(x.t)}</small></div><span class="p">${fmt(x.precio)}</span><button class="q" data-quitar="${i}" aria-label="Quitar">−</button></div>`).join('') || '<p class="nota" style="margin:14px 0">Tu bolsa está vacía.</p>';
   $('#total').textContent = fmt(total);
 }
-function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('on'), 1600); }
+function toast(t, ms = 1600) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('on'), ms); }
 function abrir(on) { $('#hoja').classList.toggle('on', on); $('#velo').classList.toggle('on', on); }
 function pintar() { pintarChips(); pintarTalles(); pintarGrilla(); pintarBolsa(); }
 
@@ -284,10 +286,16 @@ async function cargar() {
     } catch (e) { console.error(e); errorCarga = true; }
   }
   cargando = false;
-  // La bolsa guardada: solo lo que sigue en el catálogo, con su precio actual y sin pasarse del stock
-  const cuenta = {};
-  bolsa = bolsa.filter(x => { const m = CATALOGO.find(c => c.num === x.num); if (!m) return false; const k = x.num + '|' + x.t; cuenta[k] = (cuenta[k] || 0) + 1; if (cuenta[k] > (m.talles[x.t] || 0)) return false; x.precio = m.precio; x.nombre = m.nombre; return true; });
-  guardar(); pintar();
+  // La bolsa guardada: solo lo que sigue publicado y con stock, con su precio actual y sin pasarse del stock.
+  // Si no se pudo cargar el catálogo, la bolsa queda como estaba (no se borra por falta de internet).
+  if (!errorCarga) {
+    const cuenta = {}, antes = bolsa.length;
+    bolsa = bolsa.filter(x => { const m = x && CATALOGO.find(c => c.num === x.num); if (!m) return false; const k = x.num + '|' + x.t; cuenta[k] = (cuenta[k] || 0) + 1; if (cuenta[k] > (m.talles[x.t] || 0)) return false; x.precio = m.precio; x.nombre = m.nombre; return true; });
+    const fuera = antes - bolsa.length;
+    guardar();
+    if (fuera) toast(fuera === 1 ? 'Sacamos 1 prenda de tu bolsa: ya no está disponible' : `Sacamos ${fuera} prendas de tu bolsa: ya no están disponibles`, 4000);
+  }
+  pintar();
 }
 pintar(); cargar();
 </script>
