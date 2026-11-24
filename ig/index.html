@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Distrito YF</title>
+<meta http-equiv="refresh" content="3;url=https://www.instagram.com/distritoyf/">
+<style>html,body{margin:0;height:100%;background:#121314;color:#f2f2f0;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center}a{color:#c4c8ce}</style>
+</head>
+<body>
+<p>Abriendo Instagram de Distrito YF…<br><a href="https://www.instagram.com/distritoyf/">Tocá acá si no se abre</a></p>
+<script>
+// QR de la tarjeta: cuenta un escaneo (solo el tipo, nada personal) y manda a Instagram.
+// Si cambia el usuario de Instagram, se cambia acá y no hay que reimprimir la tarjeta.
+(function () {
+  var IG = 'https://www.instagram.com/distritoyf/';
+  var ir = function () { location.replace(IG); };
+  try {
+    fetch('https://bhtwuunoxkwesnjombuw.supabase.co/rest/v1/catalogo_eventos', {
+      method: 'POST', keepalive: true,
+      headers: { apikey: 'sb_publishable__emijvBRay1vB4dTazgcew_EQoEa_U9', 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ tipo: 'qr_tarjeta', modelo_id: null })
+    }).then(ir, ir);
+  } catch (e) { ir(); }
+  setTimeout(ir, 1200);
+})();
+</script>
+</body>
+</html>
