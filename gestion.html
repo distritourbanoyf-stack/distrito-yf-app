@@ -416,7 +416,7 @@ let _uidN = 0;
 const uid = p => p + Date.now().toString(36) + (_uidN++).toString(36) + Math.random().toString(36).slice(2, 5);
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 const pctTxt = n => (Math.round(n * 10) / 10).toLocaleString('es-UY') + '%';
-const margenCls = m => !m ? 'muted' : m >= 40 ? 'c-ok' : m >= 25 ? 'c-pe' : 'c-li';
+const margenCls = m => !m ? 'muted' : m >= 50 ? 'c-ok' : m >= 35 ? 'c-pe' : 'c-li';
 function descargar(contenido, nombre, tipo) {
   const blob = new Blob([contenido], { type: tipo });
   const url = URL.createObjectURL(blob);
@@ -746,7 +746,7 @@ function calcCompra(c, comoRecibida) {
   const prop = imp && unidades ? (num(c.costoImp) + t.faltUYU) / unidades : 0;
   for (const l of c.lineas) {
     l._costo = l._base ? l._base + prop : 0;
-    l._min = l._costo ? l._costo / (imp ? 0.6 : 0.7) : 0;
+    l._min = l._costo ? l._costo / 0.5 : 0; // mínimo = 50% de ganancia sobre la venta (costo × 2)
     const u = imp && !recib ? (+l.qty || 0) : l._rec;
     t.costo += u * l._costo;
     for (const mo of l.modelos || []) {
@@ -1035,13 +1035,13 @@ function previewImp() {
   if (!blue || !uyu || !preal) { $('#ai-prev').innerHTML = preal ? '<div class="prev muted">Cargá el dólar blue y el dólar en pesos para ver el costo.</div>' : ''; return; }
   const tu = d.lineas.reduce((s, l) => s + (+l.qty || 0), 0) + qty;
   const cf = preal / blue * uyu + (tu ? num(d.costoImp) / tu : 0);
-  $('#ai-prev').innerHTML = `<div class="prev"><span>Costo unitario aprox.: <b class="c-ok">${fmt(cf)}</b></span><span>Precio mínimo: <b class="c-pe">${fmt(cf / 0.6)}</b></span><span class="muted">El costo final se ajusta al recibir (faltantes).</span></div>`;
+  $('#ai-prev').innerHTML = `<div class="prev"><span>Costo unitario aprox.: <b class="c-ok">${fmt(cf)}</b></span><span>Precio mínimo (50%): <b class="c-pe">${fmt(cf / 0.5)}</b></span><span class="muted">El costo final se ajusta al recibir (faltantes).</span></div>`;
 }
 function previewLocal() {
   const pc = num($('#al-pcomp').value), pv = num($('#al-pv').value);
   if (!pc) { $('#al-prev').innerHTML = ''; return; }
   const m = pv > 0 ? (pv - pc) / pv * 100 : 0;
-  $('#al-prev').innerHTML = `<div class="prev"><span>Precio mínimo (30%): <b class="c-pe">${fmt(pc / 0.7)}</b></span>${pv ? `<span>Margen: <b class="${margenCls(m)}">${pctTxt(m)}</b></span>` : ''}</div>`;
+  $('#al-prev').innerHTML = `<div class="prev"><span>Precio mínimo (50%): <b class="c-pe">${fmt(pc / 0.5)}</b></span>${pv ? `<span>Margen: <b class="${margenCls(m)}">${pctTxt(m)}</b></span>` : ''}</div>`;
 }
 function agregarLineaImp() {
   const g = k => $('#ai-' + k).value.trim(), err = m => { $('#ai-err').textContent = m || ''; };
