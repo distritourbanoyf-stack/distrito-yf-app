@@ -1071,13 +1071,13 @@ const ATTR = (ctx, c, l, mo) => `data-ctx="${ctx}" data-cid="${esc(c.id || '')}"
 const inNum = (cls, id, chg, attrs, val, ph, extra) => `<input class="${cls}" type="text" inputmode="decimal" autocomplete="off" id="${id}" data-chg="${chg}" ${attrs} value="${num(val) || ''}" placeholder="${ph}"${extra || ''}>`;
 /** Tabla de líneas de una importación (pedido o recibida). */
 function tablaLineasImp(c, ctx) {
-  const bloq = c._bloqueada, recib = c.estado === 'recibida';
+  const bloq = c._bloqueada, recib = c.estado === 'recibida', pvPrevio = !bloq && !recib && ctx === 'h';   // precio de venta antes de que llegue
   const fila = l => {
     const a = ATTR(ctx, c, l), id = ctx + '-' + esc(l.lid);
     const falt = recib && l._falt ? `<span class="chip li">faltan ${l._falt}</span>${!bloq ? ` <button class="b sm" data-act="lnLlego" ${a}>↩️ Llegó</button> <button class="b sm" data-act="lnReint" ${a}>💸 Reintegrado</button>` : ''}` : recib ? '<span class="chip ok">completa</span>' : '';
     const precios = bloq ? '<td data-l="Costos" class="n muted">🔒</td>' : `<td data-l="P. imp ARS">${inNum('in-sm', 'pi-' + id, 'lnPrecio', a + ' data-f="precioImp"', l.precioImp, '$ imp.')}</td>
       <td data-l="P. real ARS">${inNum('in-sm', 'pr-' + id, 'lnPrecio', a + ' data-f="precioReal"', l.precioReal, '$ real')}</td>
-      <td data-l="Costo UYU" class="n c-ok">${fmtD(l._costo)}</td><td data-l="Mín. venta" class="n c-pe">${fmtD(l._min)}</td>`;
+      <td data-l="Costo UYU" class="n c-ok">${fmtD(l._costo)}</td><td data-l="Mín. venta" class="n c-pe">${fmtD(l._min)}</td>${pvPrevio ? (() => { const pm = l.mid && modeloById(l.mid), pv = pm ? num(pm.precioVenta) : 0, bajo = pv && l._min && pv < l._min; return `<td data-l="P. venta">${inNum('in-sm' + (bajo ? ' c-pe' : ''), 'lp-' + id, 'lnPv', a, pv, '$ venta', bajo ? ' title="Debajo del mínimo"' : '')}</td>`; })() : ''}`;
     const modelos = recib ? (l.modelos || []).map(mo => {
       const m = mo.mid && modeloById(mo.mid);
       return `<tr class="sub"><td data-l="" class="full" colspan="3"><span class="cod">${m ? m.num : '?'}</span> ${esc(m ? m.nombre : mo.nombre)} <span class="muted small">· ${esc(tallesTxt(mo))}</span></td>
@@ -1092,7 +1092,7 @@ function tablaLineasImp(c, ctx) {
       <td data-l="" class="fin">${!recib && ctx === 'h' ? (() => { const pm = l.mid && modeloById(l.mid), n = pm ? fotosDe(pm).length : 0; return `<button class="b sm${n ? ' ok' : ''}" data-act="lnFotos" ${a} title="Fotos para el catálogo (antes de que llegue)">📷${n ? ' ' + n : ''}</button> `; })() : ''}${recib ? '' : `<button class="b sm dan" data-act="delLinea" ${a} title="Quitar"${bloq ? ' disabled' : ''}>✕</button>`}</td>
     </tr>${modelos}`;
   };
-  const th = bloq ? '<th class="n">Costos</th>' : '<th class="n">P. imp ARS</th><th class="n">P. real ARS</th><th class="n">Costo UYU</th><th class="n">Mín. venta</th>';
+  const th = bloq ? '<th class="n">Costos</th>' : '<th class="n">P. imp ARS</th><th class="n">P. real ARS</th><th class="n">Costo UYU</th><th class="n">Mín. venta</th>' + (pvPrevio ? '<th>P. venta</th>' : '');
   return `<table class="rt"><thead><tr><th>Descripción</th><th>${recib ? 'Pedidas' : 'Cant.'}</th><th class="n">${recib ? 'Recibidas' : ''}</th>${th}<th></th></tr></thead><tbody>${c.lineas.map(fila).join('')}</tbody></table>`;
 }
 /** Tabla de una compra local: cada línea es un modelo con sus talles. */
@@ -1513,6 +1513,14 @@ function cambiarLinea(d, campo, v) {
   else if (campo === 'qty') { const n = Math.max(0, parseInt(v, 10) || 0); if (!n && c.estado === 'pedida') { toast('Para sacarla usá ✕'); render(); return; } l.qty = n; if (c.tipo === 'local' && l.modelos[0]) { /* en local la cantidad sale de los talles */ } }
   else if (PRIV_L.includes(campo)) l[campo] = Math.max(0, num(v));
   guardarCtx(d); render();
+}
+/** Precio de venta cargado en la línea de una importación pedida: va al modelo pre-creado (el mismo del 📷) y pasa solo a la recepción. */
+function pvDeLinea(d, v) {
+  const c = compraById(d.cid), l = lineaDe(c, d.lid); if (!l || c.estado !== 'pedida') return;
+  const m = modeloDeLinea(c, l), pv = Math.max(0, num(v));
+  if (num(m.precioVenta) !== pv) mutStock(() => { m.precioVenta = pv; sincronizarVariantes(m); });
+  if (pv && l._min && pv < l._min) toast(`Ojo: ${fmt(pv)} queda debajo del mínimo ${fmt(l._min)}`, 3500);
+  render();
 }
 function cambiarPv(d, v) {
   const { c, l, mo } = lineaCtx(d); if (!mo) return;
@@ -2363,6 +2371,7 @@ const CHG = {
   lnQty: (d, el) => cambiarLinea(d, 'qty', el.value),
   lnPrecio: (d, el) => cambiarLinea(d, d.f, el.value),
   moPv: (d, el) => cambiarPv(d, el.value),
+  lnPv: (d, el) => pvDeLinea(d, el.value),
   rcNom: (d, el) => rcNombre(d, el),
   rcCat: (d, el) => { const { mo } = recibirDe(d); if (mo) { mo.categoria = el.value; saveCompras(); } },
   rcTipo: (d, el) => { const { mo } = recibirDe(d); if (!mo) return; mo.tipoTalle = el.value; const ok = new Set(TALLES[el.value]); Object.keys(mo.talles || {}).forEach(t => { if (!ok.has(t)) delete mo.talles[t]; }); saveCompras(); render(); },
